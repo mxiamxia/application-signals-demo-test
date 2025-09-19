@@ -198,4 +198,4 @@ The setup includes:
 
    ```shell
    cd scripts/agents && ./setup-agents-demo.sh --operation=delete --region=region-name
-   ```
+   ```# application-signals-demo-test
