@@ -58,13 +58,9 @@ public class SqsService {
             .build();
         sqs.sendMessage(sendMsgRequest);
 
-        PurgeQueueRequest purgeReq = PurgeQueueRequest.builder().queueUrl(queueUrl).build();
-        try {
-            sqs.purgeQueue(purgeReq);
-        } catch (SqsException e) {
-            System.out.println(e.awsErrorDetails().errorMessage());
-            throw e;
-        }
+        // Remove the PurgeQueue operation to prevent throttling errors
+        // PurgeQueue should not be called on every message send as it has a 60-second rate limit
+        // If queue cleanup is needed, it should be done via a scheduled job or separate maintenance operation
     }
 
 }
