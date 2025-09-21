@@ -14,10 +14,20 @@ import software.amazon.awssdk.services.sqs.model.PurgeQueueRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
+import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Component
 public class SqsService {
     private static final String QUEUE_NAME = "apm_test";
-    final SqsClient sqs;
+    private static final long PURGE_QUEUE_COOLDOWN_MS = TimeUnit.SECONDS.toMillis(60);
+    private static final Logger logger = LoggerFactory.getLogger(SqsService.class);
+    
+    private final SqsClient sqs;
+    private final ConcurrentHashMap<String, Instant> lastPurgeAttempts = new ConcurrentHashMap<>();
 
     public SqsService() {
         // AWS web identity is set for EKS clusters, if these are not set then use default credentials
@@ -58,13 +68,48 @@ public class SqsService {
             .build();
         sqs.sendMessage(sendMsgRequest);
 
+        // Attempt to purge queue with throttling protection
+        purgeQueueWithThrottling(queueUrl);
+    }
+    
+    private void purgeQueueWithThrottling(String queueUrl) {
+        Instant lastPurgeTime = lastPurgeAttempts.get(queueUrl);
+        Instant now = Instant.now();
+        
+        // Check if enough time has passed since last purge attempt
+        if (lastPurgeTime != null) {
+            long timeSinceLastPurge = now.toEpochMilli() - lastPurgeTime.toEpochMilli();
+            if (timeSinceLastPurge < PURGE_QUEUE_COOLDOWN_MS) {
+                logger.debug("Skipping purge queue - only {}ms since last attempt (requires {}ms cooldown)", 
+                    timeSinceLastPurge, PURGE_QUEUE_COOLDOWN_MS);
+                return;
+            }
+        }
+        
         PurgeQueueRequest purgeReq = PurgeQueueRequest.builder().queueUrl(queueUrl).build();
         try {
             sqs.purgeQueue(purgeReq);
+            lastPurgeAttempts.put(queueUrl, now);
+            logger.debug("Successfully purged queue: {}", queueUrl);
         } catch (SqsException e) {
-            System.out.println(e.awsErrorDetails().errorMessage());
-            throw e;
+            String errorCode = e.awsErrorDetails().errorCode();
+            
+            // Handle PurgeQueueInProgress error gracefully
+            if ("PurgeQueueInProgress".equals(errorCode)) {
+                lastPurgeAttempts.put(queueUrl, now);
+                logger.warn("Queue purge already in progress for: {}. Will retry after cooldown period.", queueUrl);
+                // Don't throw exception for this expected throttling error
+                return;
+            }
+            
+            // Log and handle other SQS errors appropriately
+            logger.error("Failed to purge queue: {} - Error: {} - {}", 
+                queueUrl, errorCode, e.awsErrorDetails().errorMessage());
+            
+            // Only throw exception for unexpected errors
+            if (!"AWS.SimpleQueueService.NonExistentQueue".equals(errorCode)) {
+                throw e;
+            }
         }
     }
-
 }
