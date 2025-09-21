@@ -89,7 +89,7 @@ public class Owner {
     @Digits(fraction = 0, integer = 12)
     private String telephone;
 
-    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER, mappedBy = "owner")
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, mappedBy = "owner")
     private Set<Pet> pets;
 
     protected Set<Pet> getPetsInternal() {
