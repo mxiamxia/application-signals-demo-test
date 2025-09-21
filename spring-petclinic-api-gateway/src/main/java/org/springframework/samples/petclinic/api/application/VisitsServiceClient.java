@@ -32,7 +32,9 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
+import java.time.Duration;
 import java.util.List;
 
 import static java.util.stream.Collectors.joining;
@@ -58,7 +60,14 @@ public class VisitsServiceClient {
             .get()
             .uri(hostname + "pets/visits?petId={petId}", joinIds(petIds))
             .retrieve()
-            .bodyToMono(Visits.class);
+            .bodyToMono(Visits.class)
+            .timeout(Duration.ofSeconds(5))
+            .retryWhen(Retry.backoff(3, Duration.ofMillis(100))
+                .maxBackoff(Duration.ofSeconds(1))
+                .filter(throwable -> throwable instanceof WebClientResponseException.ServiceUnavailable ||
+                                     throwable instanceof java.net.ConnectException ||
+                                     throwable.getMessage() != null && 
+                                     throwable.getMessage().contains("Connection prematurely closed")));
 
     }
 
@@ -71,7 +80,14 @@ public class VisitsServiceClient {
             .get()
             .uri(hostname + "owners/{ownerId}/pets/{petId}/visits", ownerId, petId)
             .retrieve()
-            .bodyToMono(Visits.class);
+            .bodyToMono(Visits.class)
+            .timeout(Duration.ofSeconds(5))
+            .retryWhen(Retry.backoff(3, Duration.ofMillis(100))
+                .maxBackoff(Duration.ofSeconds(1))
+                .filter(throwable -> throwable instanceof WebClientResponseException.ServiceUnavailable ||
+                                     throwable instanceof java.net.ConnectException ||
+                                     throwable.getMessage() != null && 
+                                     throwable.getMessage().contains("Connection prematurely closed")));
 
     }
 
@@ -86,6 +102,13 @@ public class VisitsServiceClient {
             .body(Mono.just(visitDetails), VisitDetails.class)
             .retrieve()
             .bodyToMono(String.class)
+            .timeout(Duration.ofSeconds(5))
+            .retryWhen(Retry.backoff(3, Duration.ofMillis(100))
+                .maxBackoff(Duration.ofSeconds(1))
+                .filter(throwable -> throwable instanceof WebClientResponseException.ServiceUnavailable ||
+                                     throwable instanceof java.net.ConnectException ||
+                                     throwable.getMessage() != null && 
+                                     throwable.getMessage().contains("Connection prematurely closed")))
                 .onErrorResume(WebClientResponseException.class,
                     ex -> {
                         if (ex.getRawStatusCode() == 400) {
