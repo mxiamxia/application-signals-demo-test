@@ -14,9 +14,14 @@ import software.amazon.awssdk.services.sqs.model.PurgeQueueRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
+import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
+
 @Component
 public class SqsService {
     private static final String QUEUE_NAME = "apm_test";
+    private static final long PURGE_COOLDOWN_SECONDS = 60;
+    private static final ConcurrentHashMap<String, Instant> lastPurgeTime = new ConcurrentHashMap<>();
     final SqsClient sqs;
 
     public SqsService() {
@@ -58,12 +63,23 @@ public class SqsService {
             .build();
         sqs.sendMessage(sendMsgRequest);
 
-        PurgeQueueRequest purgeReq = PurgeQueueRequest.builder().queueUrl(queueUrl).build();
-        try {
-            sqs.purgeQueue(purgeReq);
-        } catch (SqsException e) {
-            System.out.println(e.awsErrorDetails().errorMessage());
-            throw e;
+        // Only purge queue if enough time has passed since last purge
+        Instant now = Instant.now();
+        Instant lastPurge = lastPurgeTime.get(queueUrl);
+        
+        if (lastPurge == null || now.isAfter(lastPurge.plusSeconds(PURGE_COOLDOWN_SECONDS))) {
+            PurgeQueueRequest purgeReq = PurgeQueueRequest.builder().queueUrl(queueUrl).build();
+            try {
+                sqs.purgeQueue(purgeReq);
+                lastPurgeTime.put(queueUrl, now);
+            } catch (SqsException e) {
+                // Log the error but don't re-throw to prevent disrupting pet creation
+                System.err.println("Failed to purge queue (may be rate limited): " + e.awsErrorDetails().errorMessage());
+                // Update last purge time even on failure to prevent repeated attempts
+                lastPurgeTime.put(queueUrl, now);
+            }
+        } else {
+            System.out.println("Skipping queue purge - cooldown period not elapsed");
         }
     }
 
