@@ -10,7 +10,6 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.CreateQueueRequest;
 import software.amazon.awssdk.services.sqs.model.CreateQueueResponse;
 import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest;
-import software.amazon.awssdk.services.sqs.model.PurgeQueueRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
@@ -56,15 +55,16 @@ public class SqsService {
             .messageBody("hello world")
             .delaySeconds(5)
             .build();
-        sqs.sendMessage(sendMsgRequest);
-
-        PurgeQueueRequest purgeReq = PurgeQueueRequest.builder().queueUrl(queueUrl).build();
+        
         try {
-            sqs.purgeQueue(purgeReq);
+            sqs.sendMessage(sendMsgRequest);
         } catch (SqsException e) {
-            System.out.println(e.awsErrorDetails().errorMessage());
+            System.err.println("Failed to send message to SQS: " + e.awsErrorDetails().errorMessage());
             throw e;
         }
+        
+        // Removed PurgeQueue call to prevent rate limiting errors
+        // AWS SQS only allows one PurgeQueue operation every 60 seconds per queue
     }
 
 }
