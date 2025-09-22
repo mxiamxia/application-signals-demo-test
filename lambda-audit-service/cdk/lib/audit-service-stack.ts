@@ -134,6 +134,10 @@ export class AuditServiceStack extends cdk.Stack {
       tracing: lambda.Tracing.ACTIVE,
       environment: {
         AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
+        OTEL_METRICS_EXPORTER: 'otlp',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318',
+        OTEL_SERVICE_NAME: 'audit-service',
+        OTEL_AWS_APPLICATION_SIGNALS_ENABLED: 'true',
       },
     });
 
