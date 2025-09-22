@@ -98,6 +98,10 @@ export class LambdaPetClinicStack extends cdk.Stack {
       layers: [otelLayer],
       environment: {
         AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
+        OTEL_METRICS_EXPORTER: 'otlp',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318',
+        OTEL_SERVICE_NAME: 'appointment-service-create',
+        OTEL_AWS_APPLICATION_SIGNALS_ENABLED: 'true',
       },
     });
 
@@ -115,6 +119,10 @@ export class LambdaPetClinicStack extends cdk.Stack {
       layers: [otelLayer],
       environment: {
         AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
+        OTEL_METRICS_EXPORTER: 'otlp',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318',
+        OTEL_SERVICE_NAME: 'appointment-service-list',
+        OTEL_AWS_APPLICATION_SIGNALS_ENABLED: 'true',
       },
     });
 
@@ -132,6 +140,10 @@ export class LambdaPetClinicStack extends cdk.Stack {
       layers: [otelLayer],
       environment: {
         AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
+        OTEL_METRICS_EXPORTER: 'otlp',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318',
+        OTEL_SERVICE_NAME: 'appointment-service-get',
+        OTEL_AWS_APPLICATION_SIGNALS_ENABLED: 'true',
         VERSION: 'v1-original',
       },
     });
@@ -206,7 +218,14 @@ export class LambdaPetClinicStack extends cdk.Stack {
       }),
       role: lambdaRole,
       timeout: cdk.Duration.seconds(70),
+      tracing: lambda.Tracing.ACTIVE,
+      layers: [otelLayer],
       environment: {
+        AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
+        OTEL_METRICS_EXPORTER: 'otlp',
+        OTEL_EXPORTER_OTLP_ENDPOINT: 'http://localhost:4318',
+        OTEL_SERVICE_NAME: 'HttpRequesterFunction',
+        OTEL_AWS_APPLICATION_SIGNALS_ENABLED: 'true',
         API_URL_1: `${api.deploymentStage.urlForPath('/add')}?owners=lw&petid=dog&recordId=1`,
         API_URL_2: `${api.deploymentStage.urlForPath('/list')}?owners=lw&petid=dog`,
         API_URL_3: `${api.deploymentStage.urlForPath('/get')}?owners=lw&petid=dog&recordId=1`,
