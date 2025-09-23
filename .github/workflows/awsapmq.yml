@@ -1,0 +1,44 @@
+name: AWS APM Investigation
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned]
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  awsapm-investigation:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@awsapmq')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@awsapmq')) ||
+      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@awsapmq')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@awsapmq') || contains(github.event.issue.title, '@awsapmq')))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Run AWS APM Investigation
+        id: awsapm
+        uses: mxiamxia/aws-apm-action@main
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}  # Required for Claude Code CLI
+          github_app_id: ${{ secrets.AWS_APM_GITHUB_APP_ID }}  # For custom bot name
+          github_app_private_key: ${{ secrets.AWS_APM_GITHUB_APP_PRIVATE_KEY }}  # For custom bot name
+          trigger_phrase: "@awsapm"
+          use_claude: "true"  # Use Claude Code CLI for investigation
+          use_sticky_comment: "true"
