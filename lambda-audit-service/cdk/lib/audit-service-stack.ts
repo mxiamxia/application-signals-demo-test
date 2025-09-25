@@ -3,12 +3,42 @@ import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
+import * as applicationsignals from 'aws-cdk-lib/aws-applicationsignals';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
 export class AuditServiceStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    // Enable Application Signals Discovery
+    const cfnDiscovery = new applicationsignals.CfnDiscovery(this,
+      'ApplicationSignalsDiscovery', { }
+    );
+
+    // ADOT Lambda Layer for Application Signals
+    const adotLayerArn = (() => {
+      const layerArns: { [key: string]: string } = {
+        // Python runtime layers from AWS documentation
+        'us-east-1': 'arn:aws:lambda:us-east-1:615299751070:layer:AWSOpenTelemetryDistroPython:16',
+        'us-east-2': 'arn:aws:lambda:us-east-2:615299751070:layer:AWSOpenTelemetryDistroPython:13',
+        'us-west-1': 'arn:aws:lambda:us-west-1:615299751070:layer:AWSOpenTelemetryDistroPython:20',
+        'us-west-2': 'arn:aws:lambda:us-west-2:615299751070:layer:AWSOpenTelemetryDistroPython:20',
+        'eu-west-1': 'arn:aws:lambda:eu-west-1:615299751070:layer:AWSOpenTelemetryDistroPython:13',
+        'eu-west-2': 'arn:aws:lambda:eu-west-2:615299751070:layer:AWSOpenTelemetryDistroPython:13',
+        'eu-central-1': 'arn:aws:lambda:eu-central-1:615299751070:layer:AWSOpenTelemetryDistroPython:13',
+        'ap-southeast-1': 'arn:aws:lambda:ap-southeast-1:615299751070:layer:AWSOpenTelemetryDistroPython:13',
+        'ap-southeast-2': 'arn:aws:lambda:ap-southeast-2:615299751070:layer:AWSOpenTelemetryDistroPython:13',
+        'ap-northeast-1': 'arn:aws:lambda:ap-northeast-1:615299751070:layer:AWSOpenTelemetryDistroPython:13',
+        'ap-south-1': 'arn:aws:lambda:ap-south-1:615299751070:layer:AWSOpenTelemetryDistroPython:13',
+      };
+      return layerArns[this.region] || layerArns['us-east-1']; // Fallback to us-east-1
+    })();
+
+    const adotLayer = lambda.LayerVersion.fromLayerVersionArn(
+      this, 'AwsLambdaLayerForOtel',
+      adotLayerArn
+    );
 
     // SQS Queue
     const auditJobsQueue = new sqs.Queue(this, 'AuditJobsQueue', {
@@ -60,6 +90,11 @@ export class AuditServiceStack extends cdk.Stack {
       iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole')
     );
 
+    // Add Application Signals permissions
+    lambdaExecutionRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName('CloudWatchLambdaApplicationSignalsExecutionRolePolicy')
+    );
+
 
     // Add DynamoDB read permissions for PetClinicPayment table only
     const dynamoDbPolicy = new iam.Policy(this, 'DynamoDBReadPolicy', {
@@ -92,6 +127,12 @@ export class AuditServiceStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(600),
       role: lambdaExecutionRole,
       code: lambda.Code.fromAsset(path.join(__dirname, '../../sample-app/build/function.zip')),
+      tracing: lambda.Tracing.ACTIVE,  // Enable Active tracing for Application Signals
+      layers: [adotLayer],  // Add ADOT Layer for Application Signals
+      environment: {
+        AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',  // Required for Application Signals
+        OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED: 'true',  // Enable Python logging instrumentation
+      },
     });
 
     // Add SQS as event source for the Lambda function
