@@ -14,10 +14,19 @@ import software.amazon.awssdk.services.sqs.model.PurgeQueueRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
+import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Component
 public class SqsService {
     private static final String QUEUE_NAME = "apm_test";
-    final SqsClient sqs;
+    private static final long PURGE_COOLDOWN_SECONDS = 61; // AWS requires 60 seconds, add 1 for safety
+    private static final Logger logger = LoggerFactory.getLogger(SqsService.class);
+    
+    private final SqsClient sqs;
+    private final ConcurrentHashMap<String, Instant> lastPurgeTimestamps = new ConcurrentHashMap<>();
 
     public SqsService() {
         // AWS web identity is set for EKS clusters, if these are not set then use default credentials
@@ -58,12 +67,39 @@ public class SqsService {
             .build();
         sqs.sendMessage(sendMsgRequest);
 
+        purgeQueueWithRateLimit(queueUrl);
+    }
+
+    private void purgeQueueWithRateLimit(String queueUrl) {
+        Instant now = Instant.now();
+        Instant lastPurge = lastPurgeTimestamps.get(queueUrl);
+        
+        if (lastPurge != null) {
+            long secondsSinceLastPurge = now.getEpochSecond() - lastPurge.getEpochSecond();
+            
+            if (secondsSinceLastPurge < PURGE_COOLDOWN_SECONDS) {
+                logger.info("Skipping purgeQueue operation - only {} seconds since last purge (requires {} seconds cooldown)", 
+                    secondsSinceLastPurge, PURGE_COOLDOWN_SECONDS);
+                return;
+            }
+        }
+        
         PurgeQueueRequest purgeReq = PurgeQueueRequest.builder().queueUrl(queueUrl).build();
         try {
             sqs.purgeQueue(purgeReq);
+            lastPurgeTimestamps.put(queueUrl, now);
+            logger.info("Successfully purged queue: {}", queueUrl);
         } catch (SqsException e) {
-            System.out.println(e.awsErrorDetails().errorMessage());
-            throw e;
+            String errorCode = e.awsErrorDetails().errorCode();
+            String errorMessage = e.awsErrorDetails().errorMessage();
+            
+            if ("PurgeQueueInProgress".equals(errorCode)) {
+                logger.warn("PurgeQueue already in progress for queue: {} - {}", queueUrl, errorMessage);
+                lastPurgeTimestamps.put(queueUrl, now);
+            } else {
+                logger.error("Failed to purge queue: {} - Error: {} - {}", queueUrl, errorCode, errorMessage);
+                throw e;
+            }
         }
     }
 
