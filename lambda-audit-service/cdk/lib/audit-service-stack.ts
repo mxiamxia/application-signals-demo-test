@@ -87,34 +87,34 @@ export class AuditServiceStack extends cdk.Stack {
     });
     dynamoDbPolicy.attachToRole(lambdaExecutionRole);
 
-    // OpenTelemetry Layer ARNs by region
+    // OpenTelemetry Layer ARNs by region (updated to version 5 for Application Signals)
     const layerArnsByRegion: { [key: string]: string } = {
-      'af-south-1': 'arn:aws:lambda:af-south-1:904233096616:layer:AWSOpenTelemetryDistroPython:4',
-      'ap-east-1': 'arn:aws:lambda:ap-east-1:888577020596:layer:AWSOpenTelemetryDistroPython:4',
-      'ap-northeast-1': 'arn:aws:lambda:ap-northeast-1:615299751070:layer:AWSOpenTelemetryDistroPython:4',
-      'ap-northeast-2': 'arn:aws:lambda:ap-northeast-2:615299751070:layer:AWSOpenTelemetryDistroPython:4',
-      'ap-northeast-3': 'arn:aws:lambda:ap-northeast-3:615299751070:layer:AWSOpenTelemetryDistroPython:4',
-      'ap-south-1': 'arn:aws:lambda:ap-south-1:615299751070:layer:AWSOpenTelemetryDistroPython:4',
-      'ap-south-2': 'arn:aws:lambda:ap-south-2:796973505492:layer:AWSOpenTelemetryDistroPython:4',
-      'ap-southeast-1': 'arn:aws:lambda:ap-southeast-1:615299751070:layer:AWSOpenTelemetryDistroPython:4',
-      'ap-southeast-2': 'arn:aws:lambda:ap-southeast-2:615299751070:layer:AWSOpenTelemetryDistroPython:4',
-      'ap-southeast-3': 'arn:aws:lambda:ap-southeast-3:039612877180:layer:AWSOpenTelemetryDistroPython:4',
-      'ap-southeast-4': 'arn:aws:lambda:ap-southeast-4:713881805771:layer:AWSOpenTelemetryDistroPython:4',
-      'ca-central-1': 'arn:aws:lambda:ca-central-1:615299751070:layer:AWSOpenTelemetryDistroPython:4',
-      'eu-central-1': 'arn:aws:lambda:eu-central-1:615299751070:layer:AWSOpenTelemetryDistroPython:4',
-      'eu-central-2': 'arn:aws:lambda:eu-central-2:156041407956:layer:AWSOpenTelemetryDistroPython:4',
-      'eu-north-1': 'arn:aws:lambda:eu-north-1:615299751070:layer:AWSOpenTelemetryDistroPython:4',
-      'eu-south-1': 'arn:aws:lambda:eu-south-1:257394471194:layer:AWSOpenTelemetryDistroPython:4',
-      'eu-south-2': 'arn:aws:lambda:eu-south-2:490004653786:layer:AWSOpenTelemetryDistroPython:4',
-      'eu-west-1': 'arn:aws:lambda:eu-west-1:615299751070:layer:AWSOpenTelemetryDistroPython:4',
-      'eu-west-2': 'arn:aws:lambda:eu-west-2:615299751070:layer:AWSOpenTelemetryDistroPython:4',
-      'eu-west-3': 'arn:aws:lambda:eu-west-3:615299751070:layer:AWSOpenTelemetryDistroPython:4',
-      'il-central-1': 'arn:aws:lambda:il-central-1:746669239226:layer:AWSOpenTelemetryDistroPython:4',
-      'me-central-1': 'arn:aws:lambda:me-central-1:739275441131:layer:AWSOpenTelemetryDistroPython:4',
-      'me-south-1': 'arn:aws:lambda:me-south-1:980921751758:layer:AWSOpenTelemetryDistroPython:4',
-      'sa-east-1': 'arn:aws:lambda:sa-east-1:615299751070:layer:AWSOpenTelemetryDistroPython:4',
-      'us-east-1': 'arn:aws:lambda:us-east-1:615299751070:layer:AWSOpenTelemetryDistroPython:4',
-      'us-east-2': 'arn:aws:lambda:us-east-2:615299751070:layer:AWSOpenTelemetryDistroPython:4',
+      'af-south-1': 'arn:aws:lambda:af-south-1:904233096616:layer:AWSOpenTelemetryDistroPython:5',
+      'ap-east-1': 'arn:aws:lambda:ap-east-1:888577020596:layer:AWSOpenTelemetryDistroPython:5',
+      'ap-northeast-1': 'arn:aws:lambda:ap-northeast-1:615299751070:layer:AWSOpenTelemetryDistroPython:5',
+      'ap-northeast-2': 'arn:aws:lambda:ap-northeast-2:615299751070:layer:AWSOpenTelemetryDistroPython:5',
+      'ap-northeast-3': 'arn:aws:lambda:ap-northeast-3:615299751070:layer:AWSOpenTelemetryDistroPython:5',
+      'ap-south-1': 'arn:aws:lambda:ap-south-1:615299751070:layer:AWSOpenTelemetryDistroPython:5',
+      'ap-south-2': 'arn:aws:lambda:ap-south-2:796973505492:layer:AWSOpenTelemetryDistroPython:5',
+      'ap-southeast-1': 'arn:aws:lambda:ap-southeast-1:615299751070:layer:AWSOpenTelemetryDistroPython:5',
+      'ap-southeast-2': 'arn:aws:lambda:ap-southeast-2:615299751070:layer:AWSOpenTelemetryDistroPython:5',
+      'ap-southeast-3': 'arn:aws:lambda:ap-southeast-3:039612877180:layer:AWSOpenTelemetryDistroPython:5',
+      'ap-southeast-4': 'arn:aws:lambda:ap-southeast-4:713881805771:layer:AWSOpenTelemetryDistroPython:5',
+      'ca-central-1': 'arn:aws:lambda:ca-central-1:615299751070:layer:AWSOpenTelemetryDistroPython:5',
+      'eu-central-1': 'arn:aws:lambda:eu-central-1:615299751070:layer:AWSOpenTelemetryDistroPython:5',
+      'eu-central-2': 'arn:aws:lambda:eu-central-2:156041407956:layer:AWSOpenTelemetryDistroPython:5',
+      'eu-north-1': 'arn:aws:lambda:eu-north-1:615299751070:layer:AWSOpenTelemetryDistroPython:5',
+      'eu-south-1': 'arn:aws:lambda:eu-south-1:257394471194:layer:AWSOpenTelemetryDistroPython:5',
+      'eu-south-2': 'arn:aws:lambda:eu-south-2:490004653786:layer:AWSOpenTelemetryDistroPython:5',
+      'eu-west-1': 'arn:aws:lambda:eu-west-1:615299751070:layer:AWSOpenTelemetryDistroPython:5',
+      'eu-west-2': 'arn:aws:lambda:eu-west-2:615299751070:layer:AWSOpenTelemetryDistroPython:5',
+      'eu-west-3': 'arn:aws:lambda:eu-west-3:615299751070:layer:AWSOpenTelemetryDistroPython:5',
+      'il-central-1': 'arn:aws:lambda:il-central-1:746669239226:layer:AWSOpenTelemetryDistroPython:5',
+      'me-central-1': 'arn:aws:lambda:me-central-1:739275441131:layer:AWSOpenTelemetryDistroPython:5',
+      'me-south-1': 'arn:aws:lambda:me-south-1:980921751758:layer:AWSOpenTelemetryDistroPython:5',
+      'sa-east-1': 'arn:aws:lambda:sa-east-1:615299751070:layer:AWSOpenTelemetryDistroPython:5',
+      'us-east-1': 'arn:aws:lambda:us-east-1:615299751070:layer:AWSOpenTelemetryDistroPython:5',
+      'us-east-2': 'arn:aws:lambda:us-east-2:615299751070:layer:AWSOpenTelemetryDistroPython:5',
       'us-west-1': 'arn:aws:lambda:us-west-1:615299751070:layer:AWSOpenTelemetryDistroPython:11',
       'us-west-2': 'arn:aws:lambda:us-west-2:615299751070:layer:AWSOpenTelemetryDistroPython:11',
     };
@@ -123,17 +123,24 @@ export class AuditServiceStack extends cdk.Stack {
     const regionName = cdk.Stack.of(this).region;
     const otelLayerArn = layerArnsByRegion[regionName] || '';
 
-    // Create Lambda function with OTel layer
+    // Create Lambda function with Application Signals enabled
     const auditServiceLambda = new lambda.Function(this, 'AuditServiceLambda', {
       functionName: 'audit-service',
-      runtime: lambda.Runtime.PYTHON_3_12,
+      runtime: lambda.Runtime.PYTHON_3_13, // Updated to Python 3.13 for better compatibility
       handler: 'lambda_function.lambda_handler',
       timeout: cdk.Duration.seconds(600),
       role: lambdaExecutionRole,
       code: lambda.Code.fromAsset(path.join(__dirname, '../../sample-app/build/function.zip')),
-      tracing: lambda.Tracing.ACTIVE,
+      tracing: lambda.Tracing.ACTIVE, // Enable X-Ray tracing for Application Signals
       environment: {
+        // Required for OpenTelemetry auto-instrumentation
         AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
+        // Application Signals specific environment variables
+        OTEL_PROPAGATORS: 'tracecontext,baggage,xray',
+        OTEL_PYTHON_DISABLED_INSTRUMENTATIONS: 'urllib3',
+        // Service name for Application Signals
+        OTEL_SERVICE_NAME: 'audit-service',
+        OTEL_RESOURCE_ATTRIBUTES: 'service.name=audit-service,service.version=1.0.0',
       },
     });
 
@@ -148,5 +155,21 @@ export class AuditServiceStack extends cdk.Stack {
     auditServiceLambda.addEventSource(new lambdaEventSources.SqsEventSource(auditJobsQueue, {
       batchSize: 1
     }));
+
+    // Output important information
+    new cdk.CfnOutput(this, 'AuditServiceFunctionName', {
+      value: auditServiceLambda.functionName,
+      description: 'Lambda function name for audit service',
+    });
+
+    new cdk.CfnOutput(this, 'AuditJobsQueueUrl', {
+      value: auditJobsQueue.queueUrl,
+      description: 'SQS queue URL for audit jobs',
+    });
+
+    new cdk.CfnOutput(this, 'ApplicationSignalsEnabled', {
+      value: 'true',
+      description: 'Application Signals is enabled for this Lambda function',
+    });
   }
 }
