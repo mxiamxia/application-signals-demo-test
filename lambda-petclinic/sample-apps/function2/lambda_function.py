@@ -8,7 +8,14 @@ table_name = 'HistoricalRecordDynamoDBTable'
 table = dynamodb.Table(table_name)
 
 def lambda_handler(event, context):
-    query_params = event.get('queryStringParameters', {})
+    # Add null check for event and queryStringParameters
+    if not event:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': 'Invalid request event'})
+        }
+        
+    query_params = event.get('queryStringParameters') or {}
     current_span = trace.get_current_span()
     # Add an attribute to the current span
     owner_id = random.randint(1, 9)  # Generate a random value between 1 and 9

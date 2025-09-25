@@ -9,8 +9,17 @@ table_name = 'HistoricalRecordDynamoDBTable'
 table = dynamodb.Table(table_name)
 
 def lambda_handler(event, context):
+    # Add null check for event and queryStringParameters
+    if not event:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'message': 'Invalid request event'}),
+            'headers': {
+                'Content-Type': 'application/json'
+            }
+        }
 
-    query_params = event.get('queryStringParameters', {})
+    query_params = event.get('queryStringParameters') or {}
     current_span = trace.get_current_span()
     # Add an attribute to the current span
     owner_id = random.randint(1, 9)  # Generate a random value between 1 and 9
@@ -21,7 +30,13 @@ def lambda_handler(event, context):
     pet_id = query_params.get('petid')
 
     if owners is None or pet_id is None:
-        raise Exception('Missing owner or pet_id')
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'message': 'Missing owner or pet_id parameters'}),
+            'headers': {
+                'Content-Type': 'application/json'
+            }
+        }
 
     if record_id is None:
         return {
