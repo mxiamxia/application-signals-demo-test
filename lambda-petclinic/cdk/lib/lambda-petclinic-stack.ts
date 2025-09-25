@@ -98,6 +98,14 @@ export class LambdaPetClinicStack extends cdk.Stack {
       layers: [otelLayer],
       environment: {
         AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
+        OTEL_TRACES_SAMPLER: 'xray',
+        OTEL_PROPAGATORS: 'xray',
+        OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED: 'true',
+        OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION: 'true',
+        OTEL_PYTHON_LOG_CORRELATION: 'true',
+        OTEL_PYTHON_LOG_LEVEL: 'info',
+        OTEL_PYTHON_DISTRO: 'aws_distro',
+        OTEL_PYTHON_CONFIGURATOR: 'aws_configurator',
       },
     });
 
@@ -115,6 +123,14 @@ export class LambdaPetClinicStack extends cdk.Stack {
       layers: [otelLayer],
       environment: {
         AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
+        OTEL_TRACES_SAMPLER: 'xray',
+        OTEL_PROPAGATORS: 'xray',
+        OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED: 'true',
+        OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION: 'true',
+        OTEL_PYTHON_LOG_CORRELATION: 'true',
+        OTEL_PYTHON_LOG_LEVEL: 'info',
+        OTEL_PYTHON_DISTRO: 'aws_distro',
+        OTEL_PYTHON_CONFIGURATOR: 'aws_configurator',
       },
     });
 
@@ -133,6 +149,14 @@ export class LambdaPetClinicStack extends cdk.Stack {
       environment: {
         AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
         VERSION: 'v1-original',
+        OTEL_TRACES_SAMPLER: 'xray',
+        OTEL_PROPAGATORS: 'xray',
+        OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED: 'true',
+        OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION: 'true',
+        OTEL_PYTHON_LOG_CORRELATION: 'true',
+        OTEL_PYTHON_LOG_LEVEL: 'info',
+        OTEL_PYTHON_DISTRO: 'aws_distro',
+        OTEL_PYTHON_CONFIGURATOR: 'aws_configurator',
       },
     });
 
@@ -206,10 +230,21 @@ export class LambdaPetClinicStack extends cdk.Stack {
       }),
       role: lambdaRole,
       timeout: cdk.Duration.seconds(70),
+      tracing: lambda.Tracing.ACTIVE,
+      layers: [otelLayer],
       environment: {
         API_URL_1: `${api.deploymentStage.urlForPath('/add')}?owners=lw&petid=dog&recordId=1`,
         API_URL_2: `${api.deploymentStage.urlForPath('/list')}?owners=lw&petid=dog`,
         API_URL_3: `${api.deploymentStage.urlForPath('/get')}?owners=lw&petid=dog&recordId=1`,
+        AWS_LAMBDA_EXEC_WRAPPER: '/opt/otel-instrument',
+        OTEL_TRACES_SAMPLER: 'xray',
+        OTEL_PROPAGATORS: 'xray',
+        OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED: 'true',
+        OTEL_LAMBDA_DISABLE_AWS_CONTEXT_PROPAGATION: 'true',
+        OTEL_PYTHON_LOG_CORRELATION: 'true',
+        OTEL_PYTHON_LOG_LEVEL: 'info',
+        OTEL_PYTHON_DISTRO: 'aws_distro',
+        OTEL_PYTHON_CONFIGURATOR: 'aws_configurator',
       },
     });
 
