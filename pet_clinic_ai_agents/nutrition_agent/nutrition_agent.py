@@ -6,6 +6,8 @@ from strands.models import BedrockModel
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 BEDROCK_MODEL_ID = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+MAX_INPUT_TOKENS = 500  # Token limit for inputs
+MAX_OUTPUT_TOKENS = 1000  # Token limit for outputs
 
 # Exceptions
 class TimeoutException(Exception):
@@ -95,6 +97,7 @@ def get_nutritional_supplements(pet_type, supplement):
 def create_nutrition_agent():
     model = BedrockModel(
         model_id=BEDROCK_MODEL_ID,
+        max_tokens=MAX_OUTPUT_TOKENS,  # Apply output token limit
     )
 
     tools = [get_feeding_guidelines, get_dietary_restrictions, get_nutritional_supplements]
@@ -111,7 +114,8 @@ def create_nutrition_agent():
         "- Cats are obligate carnivores requiring animal-based nutrients\n"
         "- Dogs are omnivores needing balanced animal and plant sources\n"
         "- Always recommend veterinary consultation for significant dietary changes\n"
-        "- Provide specific, actionable advice when possible\n\n"
+        "- Provide specific, actionable advice when possible\n"
+        "- Keep responses concise and within token limits\n\n"
         "Toxic foods to avoid: garlic, onions, chocolate, grapes, xylitol, alcohol, macadamia nuts"
     )
 
@@ -140,6 +144,12 @@ async def invoke(payload, context):
     
     agent = create_nutrition_agent()
     msg = payload.get('prompt', '')
+    
+    # Truncate input if it exceeds token limit (approximate)
+    # Assuming ~4 chars per token as a rough estimate
+    max_chars = MAX_INPUT_TOKENS * 4
+    if len(msg) > max_chars:
+        msg = msg[:max_chars]
 
     response_data = []
     async for event in agent.stream_async(msg):
