@@ -42,3 +42,4 @@ jobs:
           trigger_phrase: "@aws-apm"
           use_claude: "false"  # Use Claude Code CLI for investigation
           use_sticky_comment: "true"
+          enable_cloudwatch_mcp: "true" # Use CloudWatch MCP together with Applciation Signals MCP
