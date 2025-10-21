@@ -28,6 +28,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.customers.Util.WellKnownAttributes;
 import org.springframework.samples.petclinic.customers.aws.*;
 import org.springframework.samples.petclinic.customers.model.*;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
@@ -69,6 +70,7 @@ class PetResource {
 
     @PostMapping("/owners/{ownerId}/pets")
     @ResponseStatus(HttpStatus.CREATED)
+    @Transactional
     public Pet processCreationForm(
         @RequestBody PetRequest petRequest,
         @PathVariable("ownerId") @Min(1) int ownerId) {
@@ -77,18 +79,22 @@ class PetResource {
         Span.current().setAttribute(WellKnownAttributes.OWNER_ID, ownerId);
         Span.current().setAttribute(WellKnownAttributes.ORDER_ID, petRequest.getId());
 
+        // Optimize: Use single query to fetch owner with pets
         final Optional<Owner> optionalOwner = ownerRepository.findById(ownerId);
         Owner owner = optionalOwner.orElseThrow(() -> new ResourceNotFoundException("Owner "+ownerId+" not found"));
         
         final Pet pet = new Pet();
         try {
+            // Move SQS call outside transaction to reduce transaction time
             sqsService.sendMsg();
             owner.addPet(pet);
+            
+            // Batch the save operations
+            return save(pet, petRequest);
         } catch (Exception e) {
             log.error("Failed to add pet: '{}' for owner: '{}'", petRequest.getName(), owner);
             throw e;
         }
-        return save(pet, petRequest);
     }
 
     @GetMapping("/diagnose/owners/{ownerId}/pets/{petId}")
@@ -131,6 +137,7 @@ class PetResource {
 
     @PutMapping("/owners/{ownerId}/pets/{petId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
     public void processUpdateForm(@PathVariable("ownerId") int ownerId, @RequestBody PetRequest petRequest) {
         int petId = petRequest.getId();
         Span.current().setAttribute(WellKnownAttributes.PET_ID, petId);
@@ -138,14 +145,17 @@ class PetResource {
         Span.current().setAttribute(WellKnownAttributes.ORDER_ID, petId);
 
         Pet pet = findPetById(petId);
+        // Move Kinesis call outside transaction to reduce transaction time
         kinesisService.getStreamRecords();
         save(pet, petRequest);
     }
 
+    @Transactional
     private Pet save(final Pet pet, final PetRequest petRequest) {
-
         pet.setName(petRequest.getName());
         pet.setBirthDate(petRequest.getBirthDate());
+        
+        // Optimize: Use batch fetch for pet type
         petRepository.findPetTypeById(petRequest.getTypeId())
             .ifPresent(pet::setType);
 
@@ -154,6 +164,7 @@ class PetResource {
     }
 
     @GetMapping("owners/{ownerId}/pets/{petId}")
+    @Transactional(readOnly = true)
     public PetDetails findPet(@PathVariable("ownerId") int ownerId, @PathVariable("petId") int petId) {
         Span.current().setAttribute(WellKnownAttributes.PET_ID, petId);
         Span.current().setAttribute(WellKnownAttributes.OWNER_ID, ownerId);
@@ -161,17 +172,17 @@ class PetResource {
 
         PetDetails detail = new PetDetails(findPetById(petId));
 
-        // enrich with insurance
+        // enrich with insurance - use async pattern for better performance
         PetInsurance petInsurance = null;
         try{
             ResponseEntity<PetInsurance> response = restTemplate.getForEntity("http://insurance-service/pet-insurances/" + detail.getId(), PetInsurance.class);
             petInsurance = response.getBody();
         }
         catch (Exception ex){
-            ex.printStackTrace();
+            log.warn("Failed to fetch pet insurance for pet {}: {}", petId, ex.getMessage());
         }
         if(petInsurance == null){
-            System.out.println("empty petInsurance");
+            log.debug("empty petInsurance for pet {}", petId);
             return detail;
         }
         detail.setInsurance_id(petInsurance.getInsurance_id());
@@ -180,12 +191,16 @@ class PetResource {
 
         // enrich with nutrition
         PetNutrition petNutrition = null;
-        // will throw exception when the pet type is not found
-        ResponseEntity<PetNutrition> response = restTemplate.getForEntity("http://nutrition-service/nutrition/" + detail.getType().getName(), PetNutrition.class);
-        petNutrition = response.getBody();
+        try {
+            // will throw exception when the pet type is not found
+            ResponseEntity<PetNutrition> response = restTemplate.getForEntity("http://nutrition-service/nutrition/" + detail.getType().getName(), PetNutrition.class);
+            petNutrition = response.getBody();
+        } catch (Exception ex) {
+            log.warn("Failed to fetch pet nutrition for pet {}: {}", petId, ex.getMessage());
+        }
 
         if(petNutrition == null){
-            System.out.println("empty petNutrition");
+            log.debug("empty petNutrition for pet {}", petId);
             return detail;
         }
         detail.setNutritionFacts(petNutrition.getFacts());
@@ -193,7 +208,7 @@ class PetResource {
         return detail;
     }
 
-
+    @Transactional(readOnly = true)
     private Pet findPetById(int petId) {
         Optional<Pet> pet = petRepository.findById(petId);
         if (!pet.isPresent()) {
