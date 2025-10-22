@@ -35,5 +35,4 @@ jobs:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_region: ${{ vars.AWS_REGION || 'us-east-1' }}
-          trigger_phrase: "@awsapm"
-          use_sticky_comment: "true"
+          bot_name: "@awsapm"
