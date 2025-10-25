@@ -10,7 +10,6 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.CreateQueueRequest;
 import software.amazon.awssdk.services.sqs.model.CreateQueueResponse;
 import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest;
-import software.amazon.awssdk.services.sqs.model.PurgeQueueRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
@@ -49,20 +48,19 @@ public class SqsService {
     }
 
     public void sendMsg() {
-        String queueUrl = sqs.getQueueUrl(GetQueueUrlRequest.builder().queueName(QUEUE_NAME).build()).queueUrl();
-
-        SendMessageRequest sendMsgRequest = SendMessageRequest.builder()
-            .queueUrl(queueUrl)
-            .messageBody("hello world")
-            .delaySeconds(5)
-            .build();
-        sqs.sendMessage(sendMsgRequest);
-
-        PurgeQueueRequest purgeReq = PurgeQueueRequest.builder().queueUrl(queueUrl).build();
         try {
-            sqs.purgeQueue(purgeReq);
+            String queueUrl = sqs.getQueueUrl(GetQueueUrlRequest.builder().queueName(QUEUE_NAME).build()).queueUrl();
+
+            SendMessageRequest sendMsgRequest = SendMessageRequest.builder()
+                .queueUrl(queueUrl)
+                .messageBody("hello world")
+                .delaySeconds(5)
+                .build();
+            sqs.sendMessage(sendMsgRequest);
+            
+            System.out.println("Message sent successfully to queue: " + QUEUE_NAME);
         } catch (SqsException e) {
-            System.out.println(e.awsErrorDetails().errorMessage());
+            System.out.println("Failed to send message: " + e.awsErrorDetails().errorMessage());
             throw e;
         }
     }
