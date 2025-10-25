@@ -22,12 +22,24 @@ def lambda_handler(event, context):
     owners = query_params.get('owners')
     pet_id = query_params.get('petid')
 
-
-    if pet_id == "111111111111":
-        raise Exception('Fail to parse the request. Cause: NullPointerException')
+    # Input validation - proper validation instead of hardcoded error
+    if pet_id and not pet_id.isdigit():
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'message': 'Invalid petId format. Must be numeric.'}),
+            'headers': {
+                'Content-Type': 'application/json'
+            }
+        }
 
     if owners is None or pet_id is None:
-        raise Exception('Missing owner or pet_idßßßß')
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'message': 'Missing required parameters: owners and petid'}),
+            'headers': {
+                'Content-Type': 'application/json'
+            }
+        }
 
     if record_id is None:
         return {
