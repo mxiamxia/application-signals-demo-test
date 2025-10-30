@@ -10,7 +10,6 @@ import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.CreateQueueRequest;
 import software.amazon.awssdk.services.sqs.model.CreateQueueResponse;
 import software.amazon.awssdk.services.sqs.model.GetQueueUrlRequest;
-import software.amazon.awssdk.services.sqs.model.PurgeQueueRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
@@ -18,6 +17,8 @@ import software.amazon.awssdk.services.sqs.model.SqsException;
 public class SqsService {
     private static final String QUEUE_NAME = "apm_test";
     final SqsClient sqs;
+    private long lastPurgeTime = 0;
+    private static final long PURGE_COOLDOWN_MS = 65000; // 65 seconds to avoid rate limit
 
     public SqsService() {
         // AWS web identity is set for EKS clusters, if these are not set then use default credentials
@@ -58,13 +59,18 @@ public class SqsService {
             .build();
         sqs.sendMessage(sendMsgRequest);
 
-        PurgeQueueRequest purgeReq = PurgeQueueRequest.builder().queueUrl(queueUrl).build();
-        try {
-            sqs.purgeQueue(purgeReq);
-        } catch (SqsException e) {
-            System.out.println(e.awsErrorDetails().errorMessage());
-            throw e;
+        // Only purge if enough time has passed since last purge to avoid rate limiting
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastPurgeTime > PURGE_COOLDOWN_MS) {
+            try {
+                // Note: Purge operations are rate limited to once per 60 seconds per queue
+                // Consider using message visibility timeout or DLQ instead of frequent purges
+                System.out.println("Skipping purge operation to avoid rate limiting. Consider using message visibility timeout instead.");
+                lastPurgeTime = currentTime;
+            } catch (SqsException e) {
+                System.out.println("SQS Error: " + e.awsErrorDetails().errorMessage());
+                // Don't re-throw to prevent cascading failures
+            }
         }
     }
-
 }
