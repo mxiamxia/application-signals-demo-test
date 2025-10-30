@@ -78,13 +78,24 @@ public class ApiGatewayApplication {
     }
 
     /**
-     * Default Resilience4j circuit breaker configuration
+     * Improved Resilience4j circuit breaker configuration to handle high error rates
      */
     @Bean
     public Customizer<ReactiveResilience4JCircuitBreakerFactory> defaultCustomizer() {
         return factory -> factory.configureDefault(id -> new Resilience4JConfigBuilder(id)
-            .circuitBreakerConfig(CircuitBreakerConfig.ofDefaults())
-            .timeLimiterConfig(TimeLimiterConfig.custom().timeoutDuration(Duration.ofSeconds(4)).build())
+            .circuitBreakerConfig(CircuitBreakerConfig.custom()
+                .failureRateThreshold(50) // Open circuit when 50% of calls fail
+                .waitDurationInOpenState(Duration.ofSeconds(30)) // Wait 30s before trying again
+                .slidingWindowSize(10) // Consider last 10 calls for failure rate
+                .minimumNumberOfCalls(5) // Need at least 5 calls before calculating failure rate
+                .slowCallRateThreshold(50) // Consider slow calls as failures
+                .slowCallDurationThreshold(Duration.ofSeconds(2)) // Calls taking >2s are slow
+                .permittedNumberOfCallsInHalfOpenState(3) // Allow 3 test calls in half-open state
+                .automaticTransitionFromOpenToHalfOpenEnabled(true)
+                .build())
+            .timeLimiterConfig(TimeLimiterConfig.custom()
+                .timeoutDuration(Duration.ofSeconds(3)) // Reduced timeout to fail fast
+                .build())
             .build());
     }
 }
