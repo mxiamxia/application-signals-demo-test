@@ -14,9 +14,15 @@ import software.amazon.awssdk.services.sqs.model.PurgeQueueRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
+import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
+
 @Component
 public class SqsService {
     private static final String QUEUE_NAME = "apm_test";
+    private static final long PURGE_COOLDOWN_SECONDS = 60;
+    private static final ConcurrentHashMap<String, Long> lastPurgeTime = new ConcurrentHashMap<>();
+    
     final SqsClient sqs;
 
     public SqsService() {
@@ -58,13 +64,29 @@ public class SqsService {
             .build();
         sqs.sendMessage(sendMsgRequest);
 
-        PurgeQueueRequest purgeReq = PurgeQueueRequest.builder().queueUrl(queueUrl).build();
-        try {
-            sqs.purgeQueue(purgeReq);
-        } catch (SqsException e) {
-            System.out.println(e.awsErrorDetails().errorMessage());
-            throw e;
+        // Implement rate limiting for purge operations to avoid AWS rate limit errors
+        long currentTime = Instant.now().getEpochSecond();
+        Long lastPurge = lastPurgeTime.get(queueUrl);
+        
+        if (lastPurge == null || (currentTime - lastPurge) >= PURGE_COOLDOWN_SECONDS) {
+            PurgeQueueRequest purgeReq = PurgeQueueRequest.builder().queueUrl(queueUrl).build();
+            try {
+                sqs.purgeQueue(purgeReq);
+                lastPurgeTime.put(queueUrl, currentTime);
+                System.out.println("Queue purged successfully at " + Instant.now());
+            } catch (SqsException e) {
+                if (e.awsErrorDetails().errorCode().equals("PurgeQueueInProgress")) {
+                    System.out.println("Purge operation already in progress, skipping...");
+                    // Update the last purge time to prevent immediate retry
+                    lastPurgeTime.put(queueUrl, currentTime);
+                } else {
+                    System.out.println("SQS Error: " + e.awsErrorDetails().errorMessage());
+                    throw e;
+                }
+            }
+        } else {
+            long remainingCooldown = PURGE_COOLDOWN_SECONDS - (currentTime - lastPurge);
+            System.out.println("Purge operation skipped - cooldown active for " + remainingCooldown + " more seconds");
         }
     }
-
 }
