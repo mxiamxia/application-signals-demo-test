@@ -17,7 +17,9 @@ import software.amazon.awssdk.services.sqs.model.SqsException;
 @Component
 public class SqsService {
     private static final String QUEUE_NAME = "apm_test";
+    private static final long PURGE_COOLDOWN_MS = 60000; // 60 seconds
     final SqsClient sqs;
+    private volatile long lastPurgeTime = 0;
 
     public SqsService() {
         // AWS web identity is set for EKS clusters, if these are not set then use default credentials
@@ -58,12 +60,17 @@ public class SqsService {
             .build();
         sqs.sendMessage(sendMsgRequest);
 
-        PurgeQueueRequest purgeReq = PurgeQueueRequest.builder().queueUrl(queueUrl).build();
-        try {
-            sqs.purgeQueue(purgeReq);
-        } catch (SqsException e) {
-            System.out.println(e.awsErrorDetails().errorMessage());
-            throw e;
+        // Rate limit purge operations to prevent PurgeQueueInProgressException
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastPurgeTime >= PURGE_COOLDOWN_MS) {
+            PurgeQueueRequest purgeReq = PurgeQueueRequest.builder().queueUrl(queueUrl).build();
+            try {
+                sqs.purgeQueue(purgeReq);
+                lastPurgeTime = currentTime;
+            } catch (SqsException e) {
+                System.out.println(e.awsErrorDetails().errorMessage());
+                // Don't re-throw the exception to prevent service disruption
+            }
         }
     }
 
