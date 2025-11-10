@@ -117,11 +117,54 @@ DATABASES = {
         "PASSWORD": DB_PASSWORD,
         "HOST": os.environ.get("DB_SERVICE_HOST"),
         "PORT": os.environ.get("DB_SERVICE_PORT"),
+        # CRITICAL: Add connection pooling and performance optimizations
+        "OPTIONS": {
+            # Connection pool settings to prevent database overload
+            "MAX_CONNS": 20,
+            "MIN_CONNS": 5,
+            # Query optimization settings
+            "connect_timeout": 30,
+            "options": "-c default_transaction_isolation=read_committed -c statement_timeout=60000"
+        },
+        # Connection pool configuration
+        "CONN_MAX_AGE": 600,  # Keep connections alive for 10 minutes
+        "CONN_HEALTH_CHECKS": True,  # Enable connection health checks
+        # Performance settings
+        "ATOMIC_REQUESTS": False,  # Disable atomic requests for better performance
+        "AUTOCOMMIT": True,  # Enable autocommit for better performance
     }
 }
 
 default_database = os.environ.get('DATABASE_PROFILE', 'local')
 DATABASES['default'] = DATABASES[default_database]
+
+# Add database connection pooling for production
+if default_database == 'postgresql':
+    # Enable connection pooling with pgbouncer-like settings
+    DATABASES['default']['OPTIONS'].update({
+        # Connection management
+        'MAX_CONNS': 20,
+        'MIN_CONNS': 5,
+        # Query timeout settings to prevent long-running queries
+        'connect_timeout': 30,
+        'options': '-c default_transaction_isolation=read_committed -c statement_timeout=60000 -c idle_in_transaction_session_timeout=300000'
+    })
+
+# Cache configuration for better performance
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'insurance-service-cache',
+        'TIMEOUT': 300,  # 5 minutes
+        'OPTIONS': {
+            'MAX_ENTRIES': 1000,
+        }
+    }
+}
+
+# Session configuration for better performance
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+SESSION_CACHE_ALIAS = 'default'
 
 LOGGING = {
     'version': 1,
@@ -137,6 +180,12 @@ LOGGING = {
             'handlers': ['console'],
             'level': 'INFO',
             'propagate': True,
+        },
+        # Add database query logging for performance monitoring
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'WARNING',  # Only log slow queries and errors
+            'propagate': False,
         },
     },
 }
@@ -181,3 +230,17 @@ STATIC_URL = "static/"
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# REST Framework configuration for better performance
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 50,  # Limit page size to prevent large queries
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle'
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',
+        'user': '1000/hour'
+    }
+}
