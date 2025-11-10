@@ -3,6 +3,82 @@ spring:
     name: customers-service
   config:
     import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888/}
+  # Database connection pool optimization
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+  # JPA/Hibernate optimization to prevent StackOverflow
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 25
+          fetch_size: 150
+        order_inserts: true
+        order_updates: true
+        batch_versioned_data: true
+        query:
+          plan_cache_max_size: 2048
+        max_fetch_depth: 3
+        default_batch_fetch_size: 16
+
+# HTTP client timeout configuration for insurance-service calls
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+
+# Resilience4j Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      insurance-service:
+        register-health-indicator: true
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        wait-duration-in-open-state: 30s
+        failure-rate-threshold: 50
+        record-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - java.net.SocketTimeoutException
+          - java.net.ConnectException
+  retry:
+    instances:
+      insurance-service:
+        max-attempts: 3
+        wait-duration: 2s
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - java.net.SocketTimeoutException
+  timelimiter:
+    instances:
+      insurance-service:
+        timeout-duration: 60s
+
+# HTTP client configuration with increased timeouts
+http:
+  client:
+    insurance-service:
+      connect-timeout: 30000
+      read-timeout: 60000
+      connection-request-timeout: 30000
 
 eureka:
   instance:
@@ -16,6 +92,9 @@ logging:
     root: OFF
     org.springframework.samples.petclinic.customers.web.PetResource: INFO
     org.springframework.samples.petclinic.customers.aws.SqsService: FATAL
+    # Add circuit breaker logging
+    io.github.resilience4j.circuitbreaker: INFO
+    io.github.resilience4j.retry: INFO
   pattern:
     level: trace_id=%mdc{trace_id} span_id=%mdc{span_id} trace_flags=%mdc{trace_flags} %5p
 
