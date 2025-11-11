@@ -4,7 +4,7 @@ on:
   issue_comment:
     types: [created, edited]
   issues:
-    types: [opened, assigned]
+    types: [opened, assigned, edited]
 
 jobs:
   awsapm-investigation:
