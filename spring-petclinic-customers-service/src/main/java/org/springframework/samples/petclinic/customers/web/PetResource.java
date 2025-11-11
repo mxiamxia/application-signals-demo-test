@@ -161,34 +161,35 @@ class PetResource {
 
         PetDetails detail = new PetDetails(findPetById(petId));
 
-        // enrich with insurance
+        // enrich with insurance - with improved error handling
         PetInsurance petInsurance = null;
         try{
             ResponseEntity<PetInsurance> response = restTemplate.getForEntity("http://insurance-service/pet-insurances/" + detail.getId(), PetInsurance.class);
             petInsurance = response.getBody();
         }
         catch (Exception ex){
-            ex.printStackTrace();
+            log.warn("Failed to fetch insurance data for pet {}: {}", detail.getId(), ex.getMessage());
+            // Continue without insurance data - graceful degradation
         }
-        if(petInsurance == null){
-            System.out.println("empty petInsurance");
-            return detail;
+        if(petInsurance != null){
+            detail.setInsurance_id(petInsurance.getInsurance_id());
+            detail.setInsurance_name(petInsurance.getInsurance_name());
+            detail.setPrice(petInsurance.getPrice());
         }
-        detail.setInsurance_id(petInsurance.getInsurance_id());
-        detail.setInsurance_name(petInsurance.getInsurance_name());
-        detail.setPrice(petInsurance.getPrice());
 
-        // enrich with nutrition
+        // enrich with nutrition - with error handling to prevent 404 failures
         PetNutrition petNutrition = null;
-        // will throw exception when the pet type is not found
-        ResponseEntity<PetNutrition> response = restTemplate.getForEntity("http://nutrition-service/nutrition/" + detail.getType().getName(), PetNutrition.class);
-        petNutrition = response.getBody();
-
-        if(petNutrition == null){
-            System.out.println("empty petNutrition");
-            return detail;
+        try {
+            ResponseEntity<PetNutrition> response = restTemplate.getForEntity("http://nutrition-service/nutrition/" + detail.getType().getName(), PetNutrition.class);
+            petNutrition = response.getBody();
+        } catch (Exception ex) {
+            log.warn("Failed to fetch nutrition data for pet type {}: {}", detail.getType().getName(), ex.getMessage());
+            // Continue without nutrition data - graceful degradation
         }
-        detail.setNutritionFacts(petNutrition.getFacts());
+
+        if(petNutrition != null){
+            detail.setNutritionFacts(petNutrition.getFacts());
+        }
 
         return detail;
     }
