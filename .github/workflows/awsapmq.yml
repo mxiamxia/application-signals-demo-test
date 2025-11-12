@@ -2,13 +2,9 @@ name: AWS APM Investigation
 
 on:
   issue_comment:
-    types: [created]
-  pull_request_review_comment:
-    types: [created]
+    types: [created, edited]
   issues:
-    types: [opened, assigned]
-  pull_request_review:
-    types: [submitted]
+    types: [opened, assigned, edited]
 
 jobs:
   awsapm-investigation:
