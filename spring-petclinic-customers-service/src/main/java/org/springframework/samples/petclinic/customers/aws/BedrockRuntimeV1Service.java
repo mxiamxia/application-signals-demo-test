@@ -45,20 +45,22 @@ public class BedrockRuntimeV1Service {
 
     public String invokeTitanModel(String petType) {
         try {
-            String modelId = "amazon.titan-text-express-v1";
+            // Updated to use Claude 3.5 Haiku instead of deprecated Titan model
+            String modelId = "anthropic.claude-3-5-haiku-20241022-v1:0";
             String inputText = String.format("What's the common disease for a %s?", petType);
-            float temperature = 0.8f;
-            float topP = 0.9f;
-            int maxTokenCount = 1000;
-
-            JSONObject textGenerationConfig = new JSONObject();
-            textGenerationConfig.put("temperature", temperature);
-            textGenerationConfig.put("topP", topP);
-            textGenerationConfig.put("maxTokenCount", maxTokenCount);
-
+            
+            // Claude request format
+            JSONObject message = new JSONObject();
+            message.put("role", "user");
+            message.put("content", inputText);
+            
+            JSONArray messages = new JSONArray();
+            messages.put(message);
+            
             JSONObject nativeRequestObject = new JSONObject();
-            nativeRequestObject.put("inputText", inputText);
-            nativeRequestObject.put("textGenerationConfig", textGenerationConfig);
+            nativeRequestObject.put("anthropic_version", "bedrock-2023-05-31");
+            nativeRequestObject.put("max_tokens", 1000);
+            nativeRequestObject.put("messages", messages);
 
             String nativeRequest = nativeRequestObject.toString();
             ByteBuffer buffer = StandardCharsets.UTF_8.encode(nativeRequest);
@@ -75,29 +77,33 @@ public class BedrockRuntimeV1Service {
 
             String generatedText = "";
             JSONObject jsonObject = new JSONObject(result_body);
-            int inputTextTokenCount = jsonObject.getInt("inputTextTokenCount");
-            JSONArray resultsArray = jsonObject.getJSONArray("results");
-            JSONObject firstResult = resultsArray.getJSONObject(0);
-            int outputTokenCount = firstResult.getInt("tokenCount");
-            generatedText = firstResult.getString("outputText");
-            String completionReason = firstResult.getString("completionReason");
+            
+            // Parse Claude response format
+            JSONArray contentArray = jsonObject.getJSONArray("content");
+            if (contentArray.length() > 0) {
+                JSONObject firstContent = contentArray.getJSONObject(0);
+                generatedText = firstContent.getString("text");
+            }
+            
+            JSONObject usage = jsonObject.getJSONObject("usage");
+            int inputTokens = usage.getInt("input_tokens");
+            int outputTokens = usage.getInt("output_tokens");
+            String stopReason = jsonObject.getString("stop_reason");
+            
             log.info(
-                    "Invoke Titan Model Result: " +
+                    "Invoke Claude Model Result: " +
                             "{ " +
                             "\"modelId\": \"" + modelId + "\", " +
-                            "\"prompt_token_count\": " + inputTextTokenCount + ", " +
-                            "\"generation_token_count\": " + outputTokenCount + ", " +
+                            "\"prompt_token_count\": " + inputTokens + ", " +
+                            "\"generation_token_count\": " + outputTokens + ", " +
                             "\"prompt\": \"" + inputText + "\", " +
                             "\"generated_text\": \"" + generatedText.replace("\n", " ") + "\", " +
-                            "\"stop_reason\": \"" + completionReason + "\", " +
-                            "\"temperature\": " + temperature + ", " +
-                            "\"top_p\": " + topP + ", " +
-                            "\"max_gen_len\": " + maxTokenCount +
+                            "\"stop_reason\": \"" + stopReason + "\"" +
                             " }"
             );
-            return "Invoke titan Model Result: " + result_body;
+            return "Invoke Claude Model Result: " + result_body;
         } catch (Exception e) {
-            log.error("Invoke titan Model Result: Error: %s", e.getMessage());
+            log.error("Invoke Claude Model Result: Error: %s", e.getMessage());
             throw e;
         }
     }

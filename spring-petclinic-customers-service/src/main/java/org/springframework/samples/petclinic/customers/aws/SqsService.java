@@ -14,10 +14,19 @@ import software.amazon.awssdk.services.sqs.model.PurgeQueueRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SqsException;
 
+import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+
 @Component
 public class SqsService {
     private static final String QUEUE_NAME = "apm_test";
+    private static final long PURGE_COOLDOWN_SECONDS = 60;
+    
     final SqsClient sqs;
+    
+    // Thread-safe tracking of last purge time per queue
+    private final ConcurrentHashMap<String, AtomicLong> lastPurgeTime = new ConcurrentHashMap<>();
 
     public SqsService() {
         // AWS web identity is set for EKS clusters, if these are not set then use default credentials
@@ -58,13 +67,43 @@ public class SqsService {
             .build();
         sqs.sendMessage(sendMsgRequest);
 
-        PurgeQueueRequest purgeReq = PurgeQueueRequest.builder().queueUrl(queueUrl).build();
-        try {
-            sqs.purgeQueue(purgeReq);
-        } catch (SqsException e) {
-            System.out.println(e.awsErrorDetails().errorMessage());
-            throw e;
+        // Check if we can purge the queue (respecting 60-second cooldown)
+        if (canPurgeQueue(queueUrl)) {
+            PurgeQueueRequest purgeReq = PurgeQueueRequest.builder().queueUrl(queueUrl).build();
+            try {
+                sqs.purgeQueue(purgeReq);
+                // Update last purge time on successful purge
+                updateLastPurgeTime(queueUrl);
+                System.out.println("Queue purged successfully");
+            } catch (SqsException e) {
+                if (e.awsErrorDetails().errorCode().equals("PurgeQueueInProgress")) {
+                    System.out.println("Purge operation already in progress, skipping purge request");
+                    // Update our tracking to prevent immediate retry
+                    updateLastPurgeTime(queueUrl);
+                } else {
+                    System.out.println("Purge failed: " + e.awsErrorDetails().errorMessage());
+                    throw e;
+                }
+            }
+        } else {
+            System.out.println("Skipping purge - within 60-second cooldown period");
         }
     }
-
+    
+    private boolean canPurgeQueue(String queueUrl) {
+        AtomicLong lastPurge = lastPurgeTime.get(queueUrl);
+        if (lastPurge == null) {
+            return true; // Never purged before
+        }
+        
+        long currentTime = Instant.now().getEpochSecond();
+        long timeSinceLastPurge = currentTime - lastPurge.get();
+        
+        return timeSinceLastPurge >= PURGE_COOLDOWN_SECONDS;
+    }
+    
+    private void updateLastPurgeTime(String queueUrl) {
+        long currentTime = Instant.now().getEpochSecond();
+        lastPurgeTime.computeIfAbsent(queueUrl, k -> new AtomicLong()).set(currentTime);
+    }
 }
