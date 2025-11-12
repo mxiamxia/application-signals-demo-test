@@ -50,7 +50,7 @@ def get_feeding_guidelines(pet_type, age, weight):
     
     animal = ANIMAL_DATA.get(pet_type.lower() + 's')
     if not animal:
-        return f"{pet_type.title()} not found in animal database. Consult veterinarian for specific feeding guidelines"
+        return f"I don't have specific nutrition information for {pet_type}. Please consult your veterinarian for proper dietary guidance."
     
     calories_per_lb = animal.get('calories_per_pound', '15-20')
     schedule = animal.get('feeding_schedule', {}).get(age.lower(), '2 times daily')
@@ -74,10 +74,10 @@ def get_dietary_restrictions(pet_type, condition):
     
     animal = ANIMAL_DATA.get(pet_type.lower() + 's')
     if not animal:
-        return f"{pet_type.title()} not found in animal database. Consult veterinarian for condition-specific dietary advice"
+        return f"I don't have specific nutrition information for {pet_type}. Please consult your veterinarian for condition-specific dietary advice."
     
     restrictions = animal.get('dietary_restrictions', {})
-    return restrictions.get(condition.lower(), f"No dietary restrictions for {condition} found in animal database. Consult veterinarian for condition-specific dietary advice")
+    return restrictions.get(condition.lower(), f"I don't have specific dietary restrictions for {condition} in {pet_type}. Please consult your veterinarian for condition-specific dietary advice.")
 
 @tool
 def get_nutritional_supplements(pet_type, supplement):
@@ -87,10 +87,10 @@ def get_nutritional_supplements(pet_type, supplement):
     
     animal = ANIMAL_DATA.get(pet_type.lower() + 's')
     if not animal:
-        return f"{pet_type.title()} not found in animal database. Consult veterinarian before adding supplements"
+        return f"I don't have specific nutrition information for {pet_type}. Please consult your veterinarian before adding supplements."
     
     supplements = animal.get('supplements', {})
-    return supplements.get(supplement.lower(), f"No information for {supplement} supplement found in animal database. Consult veterinarian before adding supplements")
+    return supplements.get(supplement.lower(), f"I don't have information for {supplement} supplement for {pet_type}. Please consult your veterinarian before adding supplements.")
 
 def create_nutrition_agent():
     model = BedrockModel(
@@ -111,7 +111,8 @@ def create_nutrition_agent():
         "- Cats are obligate carnivores requiring animal-based nutrients\n"
         "- Dogs are omnivores needing balanced animal and plant sources\n"
         "- Always recommend veterinary consultation for significant dietary changes\n"
-        "- Provide specific, actionable advice when possible\n\n"
+        "- Provide specific, actionable advice when possible\n"
+        "- When nutrition data is unavailable for a pet type, respond with: 'I don't have specific nutrition information for [pet type]. Please consult your veterinarian for proper dietary guidance.' Never fabricate product names or recommendations.\n\n"
         "Toxic foods to avoid: garlic, onions, chocolate, grapes, xylitol, alcohol, macadamia nuts"
     )
 
@@ -136,7 +137,8 @@ async def invoke(payload, context):
     """
     Invoke the nutrition agent with a payload
     """
-    maybe_throw_error(threshold=0.35)
+    # Reduced error injection rate from 0.35 to 0.05 to fix excessive artificial errors
+    maybe_throw_error(threshold=0.05)
     
     agent = create_nutrition_agent()
     msg = payload.get('prompt', '')
