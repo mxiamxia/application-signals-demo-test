@@ -26,7 +26,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }} # this should be the ARN of the IAM role created for Github Actions
-          aws-region: ${{ env.AWS_REGION }} || 'us-east-1'
+          aws-region: 'us-east-1'
 
       - name: Run Application observability for AWS Investigation
         id: awsapm
