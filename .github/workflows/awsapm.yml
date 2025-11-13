@@ -1,4 +1,4 @@
-name: AWS APM Investigation
+name: Application observability for AWS
 
 on:
   issue_comment:
@@ -22,11 +22,14 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Run AWS APM Investigation
-        id: awsapm
-        uses: mxiamxia/aws-apm-action@core-feat
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws_region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }} # this should be the ARN of the IAM role created for Github Actions
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Run Application observability for AWS Investigation
+        id: awsapm
+        uses: aws-actions/application-observability-for-aws@v1
+        with:
           bot_name: "@awsapm"
