@@ -136,7 +136,8 @@ async def invoke(payload, context):
     """
     Invoke the nutrition agent with a payload
     """
-    maybe_throw_error(threshold=0.35)
+    # Disabled error injection to fix 5% error rate
+    # maybe_throw_error(threshold=0.35)
     
     agent = create_nutrition_agent()
     msg = payload.get('prompt', '')
