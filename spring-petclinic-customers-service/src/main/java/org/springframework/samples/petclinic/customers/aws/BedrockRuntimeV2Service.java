@@ -37,7 +37,7 @@ public class BedrockRuntimeV2Service {
     public String invokeAnthropicClaude(String petType) {
         try {
             String claudeModelId = "anthropic.claude-v2:1";
-            String prompt = String.format("What are the best preventive measures for common %s diseases?", petType);
+            String prompt = String.format("What are the best preventive measures for common %s diseases? Be concise.", petType);
             JSONObject userMessage = new JSONObject()
                     .put("role", "user")
                     .put("content", "Pet diagnose content");
@@ -48,7 +48,7 @@ public class BedrockRuntimeV2Service {
                     .put("anthropic_version", "bedrock-2023-05-31")
                     .put("messages", messages)
                     .put("system", prompt)
-                    .put("max_tokens", 1000)
+                    .put("max_tokens", 500) // Limited to reduce costs
                     .put("temperature", 0.5)
                     .put("top_p", 0.9)
                     .toString();
@@ -91,7 +91,7 @@ public class BedrockRuntimeV2Service {
                             "\"generation_token_count\": " + generationTokenCount + ", " +
                             "\"prompt\": \"" + prompt + "\", " +
                             "\"generated_text\": \"" + generatedText.replace("\n", " ") + "\", " +
-                            "\"max_gen_len\": 1000, " +
+                            "\"max_gen_len\": 500, " + // Updated to reflect the actual limit
                             "\"temperature\": 0.5, " +
                             "\"top_p\": 0.9, " +
                             "\"stop_reason\": \"" + stopReason + "\" " +
