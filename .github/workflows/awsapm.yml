@@ -9,8 +9,8 @@ on:
 jobs:
   awsapm-investigation:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@awsapm-iad')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@awsapm-iad') || contains(github.event.issue.title, '@awsapm-iad')))
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@awsiadapm-iad')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@awsiadapm-iad') || contains(github.event.issue.title, '@awsiadapm-iad')))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -33,4 +33,4 @@ jobs:
         id: awsapm
         uses: mxiamxia/aws-apm-action@v1
         with:
-          bot_name: "@awsapm-iad"
+          bot_name: "@awsiadapm-iad"
