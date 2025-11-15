@@ -31,6 +31,6 @@ jobs:
 
       - name: Run Application observability for AWS Investigation
         id: awsapm
-        uses: mxiamxia/aws-apm-action@v1
+        uses: mxiamxia/aws-apm-action@main
         with:
           bot_name: "@awsiadapm-iad"
