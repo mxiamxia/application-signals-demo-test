@@ -12,8 +12,8 @@ env:
 jobs:
   awsapm-investigation:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, env.BOT_NAME)) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, env.BOT_NAME) || contains(github.event.issue.title, env.BOT_NAME)))
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, ${{ env.BOT_NAME }})) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, ${{ env.BOT_NAME }}) || contains(github.event.issue.title, ${{ env.BOT_NAME }})))
     runs-on: ubuntu-latest
     permissions:
       contents: write
