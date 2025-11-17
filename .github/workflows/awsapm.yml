@@ -6,15 +6,11 @@ on:
   issues:
     types: [opened, assigned, edited]
 
-vars:
-  BOT_NAME: '@awsapm'
-
 jobs:
   awsapm-investigation:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, vars.BOT_NAME)) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, vars.BOT_NAME) || contains(github.event.issue.title, vars.BOT_NAME)))
-
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@awsapm')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@awsapm') || contains(github.event.issue.title, '@awsapm')))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -24,17 +20,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }} # this should be the ARN of the IAM role created for Github Actions
-          aws-region: 'us-east-1'
+          role-to-assume: ${{ secrets.AWSAPM_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
 
       - name: Run Application observability for AWS Investigation
         id: awsapm
         uses: mxiamxia/aws-apm-action@main
         with:
-          bot_name: ${{ vars.BOT_NAME }}
+          bot_name: "@awsapm"
