@@ -32,6 +32,6 @@ jobs:
         uses: mxiamxia/aws-apm-action@core-feat
         with:
           bot_name: "@awsapm"
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}  # Required for Claude Code CLI
-          use_claude: "true"  # Use Claude Code CLI for investigation
+          cli_tool: "claude_code"
+          cli_tool_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
       
