@@ -59,19 +59,6 @@ jobs:
           cli_tool: "claude_code"
           enable_cloudwatch_mcp: "true"
 
-      # Debug: Print prepared files for debugging
-      - name: Debug - Show Prepared Configuration
-        shell: bash
-        run: |
-          echo "=== Prompt File ==="
-          cat "${{ steps.prepare.outputs.prompt_file }}"
-          echo ""
-          echo "=== MCP Config File ==="
-          cat "${{ steps.prepare.outputs.mcp_config_file }}"
-          echo ""
-          echo "=== Allowed Tools ==="
-          echo "${{ steps.prepare.outputs.allowed_tools }}"
-
       # Step 2: Execute investigation with Claude Code
       - name: Run Claude Investigation
         id: claude
