@@ -57,7 +57,6 @@ jobs:
         with:
           bot_name: "@awsapm"
           cli_tool: "claude_code"
-          enable_cloudwatch_mcp: "true"
 
       # Step 2: Execute investigation with Claude Code
       - name: Run Claude Investigation
