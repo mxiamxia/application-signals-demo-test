@@ -88,7 +88,7 @@ jobs:
       # Step 3: Post results back to GitHub issue/PR (reuse the same action)
       - name: Post Investigation Results
         if: always()  # Run even if Claude step fails
-        uses: aws-actions/application-observability-for-aws@v2
+        uses: mxiamxia/aws-apm-action@apm-exp
         with:
           bot_name: "@awsapm"
           cli_tool: "claude_code"
