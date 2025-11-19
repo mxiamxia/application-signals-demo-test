@@ -27,7 +27,7 @@ on:
     types: [opened, assigned, edited]
 
 jobs:
-  awsapm-investigation:
+  awsapm-investigation-exp:
     # Only run when @awsapm is mentioned
     if: |
       (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@awsapm')) ||
