@@ -161,34 +161,36 @@ class PetResource {
 
         PetDetails detail = new PetDetails(findPetById(petId));
 
-        // enrich with insurance
         PetInsurance petInsurance = null;
         try{
             ResponseEntity<PetInsurance> response = restTemplate.getForEntity("http://insurance-service/pet-insurances/" + detail.getId(), PetInsurance.class);
             petInsurance = response.getBody();
         }
         catch (Exception ex){
-            ex.printStackTrace();
+            log.warn("Failed to retrieve pet insurance for pet {}: {}", detail.getId(), ex.getMessage());
         }
-        if(petInsurance == null){
-            System.out.println("empty petInsurance");
-            return detail;
+        if(petInsurance != null){
+            detail.setInsurance_id(petInsurance.getInsurance_id());
+            detail.setInsurance_name(petInsurance.getInsurance_name());
+            detail.setPrice(petInsurance.getPrice());
+        } else {
+            log.info("Returning pet details without insurance for pet {}", detail.getId());
         }
-        detail.setInsurance_id(petInsurance.getInsurance_id());
-        detail.setInsurance_name(petInsurance.getInsurance_name());
-        detail.setPrice(petInsurance.getPrice());
 
-        // enrich with nutrition
         PetNutrition petNutrition = null;
-        // will throw exception when the pet type is not found
-        ResponseEntity<PetNutrition> response = restTemplate.getForEntity("http://nutrition-service/nutrition/" + detail.getType().getName(), PetNutrition.class);
-        petNutrition = response.getBody();
-
-        if(petNutrition == null){
-            System.out.println("empty petNutrition");
-            return detail;
+        try {
+            ResponseEntity<PetNutrition> response = restTemplate.getForEntity("http://nutrition-service/nutrition/" + detail.getType().getName(), PetNutrition.class);
+            petNutrition = response.getBody();
         }
-        detail.setNutritionFacts(petNutrition.getFacts());
+        catch (Exception ex){
+            log.warn("Failed to retrieve nutrition info for pet {}: {}", detail.getId(), ex.getMessage());
+        }
+        
+        if(petNutrition != null){
+            detail.setNutritionFacts(petNutrition.getFacts());
+        } else {
+            log.info("Returning pet details without nutrition for pet {}", detail.getId());
+        }
 
         return detail;
     }
