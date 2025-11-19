@@ -33,5 +33,5 @@ jobs:
         with:
           bot_name: "@awsapm"
           cli_tool: "claude_code"
-          cli_tool_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          bedrock_model: "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
       
