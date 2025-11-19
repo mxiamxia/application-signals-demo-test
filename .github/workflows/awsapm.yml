@@ -9,8 +9,8 @@ on:
 jobs:
   awsapm-investigation:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@awsapm')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@awsapm') || contains(github.event.issue.title, '@awsapm')))
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@1awsapm')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@1awsapm') || contains(github.event.issue.title, '@1awsapm')))
     runs-on: ubuntu-latest
     permissions:
       contents: write
