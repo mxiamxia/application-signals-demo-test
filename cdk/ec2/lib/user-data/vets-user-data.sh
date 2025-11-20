@@ -95,9 +95,9 @@ set -x
 # Set home directory
 cd ~
 
-# Clone the application repository
-git clone https://github.com/aws-observability/application-signals-demo.git
-cd application-signals-demo/
+# Clone the current application repository
+git clone https://github.com/mxiamxia/application-signals-demo-test.git
+cd application-signals-demo-test/
 
 # Build the vets application
 ./mvnw clean install -pl spring-petclinic-vets-service -am -DskipTests
@@ -130,7 +130,7 @@ tmux new-session -s vets -d
 tmux send-keys -t vets "cd spring-petclinic-vets-service/target/" C-m
 tmux send-keys -t vets "export CONFIG_SERVER_URL=http://setup.demo.local:8888" C-m
 tmux send-keys -t vets "export DISCOVERY_SERVER_URL=http://setup.demo.local:8761/eureka" C-m
-tmux send-keys -t vets "export JAVA_TOOL_OPTIONS=' -javaagent:/home/ec2-user/application-signals-demo/aws-opentelemetry-agent.jar'" C-m
+tmux send-keys -t vets "export JAVA_TOOL_OPTIONS=' -javaagent:/home/ec2-user/application-signals-demo-test/aws-opentelemetry-agent.jar'" C-m
 tmux send-keys -t vets "export OTEL_METRICS_EXPORTER=none" C-m
 tmux send-keys -t vets "export OTEL_LOGS_EXPORTER=none" C-m
 tmux send-keys -t vets "export OTEL_AWS_APPLICATION_SIGNALS_ENABLED=true" C-m
