@@ -5,6 +5,81 @@ If your interest lies in exploring the broader aspects of the Spring Boot stack,
 
 In the following, we will focus on how customers can set up the current sample application to explore the features of Application Signals.
 
+# Application Signals Configuration
+
+This demo application is pre-configured with AWS Application Signals for comprehensive observability. The configuration includes:
+
+## Infrastructure Components
+
+### IAM Permissions
+- **CloudWatchAgentServerPolicy**: Attached to EC2 IAM role for CloudWatch Agent permissions
+- **Additional policies**: AmazonSSMManagedInstanceCore, AmazonSQSFullAccess, AmazonRDSFullAccess, AmazonDynamoDBFullAccess, AmazonS3ReadOnlyAccess, AmazonBedrockFullAccess, AmazonKinesisFullAccess
+
+### CloudWatch Agent
+- **Installation**: Automatically installed via UserData scripts
+- **Configuration**: Application Signals traces and metrics collection enabled
+- **Service mapping rules**: Configured to properly identify and map service dependencies
+
+### OpenTelemetry Instrumentation
+- **ADOT Java Agent**: Downloaded and configured for Java services
+- **Environment Variables**: 
+  - `OTEL_AWS_APPLICATION_SIGNALS_ENABLED=true`
+  - `OTEL_RESOURCE_ATTRIBUTES="service.name=${service_name}"`
+  - `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=http://localhost:4316/v1/traces`
+  - `OTEL_AWS_APPLICATION_SIGNALS_EXPORTER_ENDPOINT=http://localhost:4316/v1/metrics`
+
+## Service Architecture
+
+The application includes the following instrumented services:
+
+### Java Services (Spring Boot)
+- **customers-service-ec2-java**: Customer management service
+- **vets-service-ec2-java**: Veterinarian management service  
+- **visits-service-ec2-java**: Visit scheduling and management service
+
+### .NET Service
+- **payments-service-ec2-dotnet**: Payment processing service
+
+### Python Services
+- **billing-service-ec2-python**: Billing management service
+- **insurance-service-ec2-python**: Insurance management service
+
+### Infrastructure Services
+- **discovery-server**: Eureka service discovery
+- **config-server**: Spring Cloud Config server
+- **admin-server**: Spring Boot Admin server
+
+## Monitoring Features
+
+### Automatic Service Discovery
+- Services are automatically discovered and mapped in Application Signals
+- Service dependencies are tracked and visualized
+- Remote service calls are properly attributed
+
+### Metrics Collection
+- **Latency**: Response time metrics for all service operations
+- **Error Rate**: Fault and error tracking across services
+- **Throughput**: Request volume and traffic patterns
+- **Availability**: Service health and uptime monitoring
+
+### Distributed Tracing
+- End-to-end request tracing across microservices
+- Performance bottleneck identification
+- Error root cause analysis
+- Service dependency mapping
+
+## Verification
+
+After deployment, verify Application Signals is working:
+
+1. **CloudWatch Console**: Navigate to CloudWatch → Application Signals → Services
+2. **Wait Time**: Allow 5-10 minutes for data to appear
+3. **Service Map**: View the automatically generated service topology
+4. **Metrics**: Check latency, error rate, and throughput metrics
+5. **Traces**: Examine distributed traces for request flows
+
+For troubleshooting, refer to the [Application Signals Troubleshooting Guide](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-Application-Signals-Enable-Troubleshoot.html).
+
 # Disclaimer
 
 This code for sample application is intended for demonstration purposes only. It should not be used in a production environment or in any setting where reliability/security is a concern.
@@ -147,7 +222,7 @@ The following instructions set up an kubernetes cluster on 2 EC2 instances (one 
 
 
 # ECS Demo
-The following instructions set up an ECS cluster with all services running in Fargate. You can run these steps in your personal AWS account to follow along (Not recommended for production usage).
+The following instructions set up an ECS cluster with all services running in Fargate. You can run these steps in your personal AWS account to follow alone (Not recommended for production usage).
 
 1. Build container images and push them to private ECR repo. Replace `region-name` with the region you choose.
    ```shell
