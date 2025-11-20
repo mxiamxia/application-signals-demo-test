@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package org.springframework.samples.petclinic.customers.aws;
 
+import com.amazonaws.ClientConfiguration;
 import com.amazonaws.auth.BasicAWSCredentials;
 import com.amazonaws.auth.WebIdentityTokenCredentialsProvider;
 import com.amazonaws.regions.Regions;
@@ -23,21 +24,29 @@ public class BedrockRuntimeV1Service {
     final AmazonBedrockRuntime bedrockRuntimeV1Client;
 
     public BedrockRuntimeV1Service() {
-        // AWS web identity is set for EKS clusters, if these are not set then use default credentials
+        ClientConfiguration clientConfig = new ClientConfiguration()
+                .withSocketTimeout(60000)
+                .withConnectionTimeout(10000)
+                .withRequestTimeout(90000)
+                .withClientExecutionTimeout(90000);
+
         if (System.getenv("REGION_FROM_ECS") != null) {
             String regionName = System.getenv("REGION_FROM_ECS");
             bedrockRuntimeV1Client = AmazonBedrockRuntimeClientBuilder.standard()
                             .withRegion(regionName)
+                            .withClientConfiguration(clientConfig)
                             .build();
         } else if (System.getenv("AWS_WEB_IDENTITY_TOKEN_FILE") == null && System.getProperty("aws.webIdentityTokenFile") == null) {
             bedrockRuntimeV1Client = AmazonBedrockRuntimeClientBuilder.standard()
                     .withRegion(Util.REGION_FROM_EC2)
+                    .withClientConfiguration(clientConfig)
                     .build();
         }
         else {
             bedrockRuntimeV1Client = AmazonBedrockRuntimeClientBuilder.standard()
                     .withRegion(Util.REGION_FROM_EKS)
                     .withCredentials(WebIdentityTokenCredentialsProvider.create())
+                    .withClientConfiguration(clientConfig)
                     .build();
         }
 
@@ -97,8 +106,8 @@ public class BedrockRuntimeV1Service {
             );
             return "Invoke titan Model Result: " + result_body;
         } catch (Exception e) {
-            log.error("Invoke titan Model Result: Error: %s", e.getMessage());
-            throw e;
+            log.error("Invoke titan Model Result: Error: {}", e.getMessage(), e);
+            return "Bedrock service temporarily unavailable";
         }
     }
 }
