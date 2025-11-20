@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 package org.springframework.samples.petclinic.customers.aws;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -9,32 +12,62 @@ import org.springframework.samples.petclinic.customers.Util;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.*;
+
+import java.time.Duration;
 
 @Component
 @Slf4j
 public class BedrockRuntimeV2Service {
     final BedrockRuntimeClient bedrockRuntimeV2Client;
+    final CircuitBreaker circuitBreaker;
 
     public BedrockRuntimeV2Service() {
-        // AWS web identity is set for EKS clusters, if these are not set then use default credentials
+        ClientOverrideConfiguration.Builder overrideConfig = ClientOverrideConfiguration.builder()
+                .apiCallTimeout(Duration.ofSeconds(30))
+                .apiCallAttemptTimeout(Duration.ofSeconds(25));
+
         if (System.getenv("AWS_WEB_IDENTITY_TOKEN_FILE") == null && System.getProperty("aws.webIdentityTokenFile") == null) {
             bedrockRuntimeV2Client = BedrockRuntimeClient.builder()
                     .region(Region.of(Util.REGION_FROM_EC2))
+                    .overrideConfiguration(overrideConfig.build())
                     .build();
         }
         else {
             bedrockRuntimeV2Client = BedrockRuntimeClient.builder()
                     .region(Region.of(Util.REGION_FROM_EKS))
                     .credentialsProvider(WebIdentityTokenFileCredentialsProvider.create())
+                    .overrideConfiguration(overrideConfig.build())
                     .build();
         }
 
+        CircuitBreakerConfig config = CircuitBreakerConfig.custom()
+                .failureRateThreshold(50)
+                .slowCallRateThreshold(50)
+                .slowCallDurationThreshold(Duration.ofSeconds(20))
+                .waitDurationInOpenState(Duration.ofSeconds(60))
+                .permittedNumberOfCallsInHalfOpenState(3)
+                .minimumNumberOfCalls(5)
+                .slidingWindowSize(10)
+                .build();
+
+        CircuitBreakerRegistry registry = CircuitBreakerRegistry.of(config);
+        this.circuitBreaker = registry.circuitBreaker("bedrockInvokeModel");
     }
 
     public String invokeAnthropicClaude(String petType) {
+        try {
+            return circuitBreaker.executeSupplier(() -> invokeAnthropicClaudeInternal(petType));
+        } catch (Exception e) {
+            log.error("Failed to invoke Anthropic claude (circuit breaker): {}", e.getMessage());
+            return "Bedrock service is temporarily unavailable. Please try again later.";
+        }
+    }
+
+    private String invokeAnthropicClaudeInternal(String petType) {
         try {
             String claudeModelId = "anthropic.claude-v2:1";
             String prompt = String.format("What are the best preventive measures for common %s diseases?", petType);
