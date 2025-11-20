@@ -79,6 +79,5 @@ jobs:
         with:
           bot_name: "@awsapm"
           cli_tool: "claude_code"
-          comment_id: ${{ steps.prepare.outputs.awsapm_comment_id }}
           output_file: ${{ steps.claude.outputs.execution_file }}
           output_status: ${{ steps.claude.outputs.conclusion }}
