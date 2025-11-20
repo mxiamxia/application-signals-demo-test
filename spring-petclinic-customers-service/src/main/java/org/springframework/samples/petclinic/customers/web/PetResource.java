@@ -98,12 +98,22 @@ class PetResource {
         Span.current().setAttribute(WellKnownAttributes.OWNER_ID, ownerId);
         Span.current().setAttribute(WellKnownAttributes.ORDER_ID, petId);
 
-        log.info("bedrockAgentV1Service Getting knowledge base");
-        bedrockAgentV1Service.getKnowledgeBase();
-        log.info("bedrockAgentV1Service FINISH Getting knowledge base");
-        log.info("bedrockV1Service Getting guardrail");
-        bedrockV1Service.getGuardrail();
-        log.info("bedrockV1Service FINISH Getting guardrail");
+        try {
+            log.info("bedrockAgentV1Service Getting knowledge base");
+            bedrockAgentV1Service.getKnowledgeBase();
+            log.info("bedrockAgentV1Service FINISH Getting knowledge base");
+        } catch (Exception e) {
+            log.warn("Bedrock Agent V1 service unavailable, continuing with reduced functionality: {}", e.getMessage());
+        }
+
+        try {
+            log.info("bedrockV1Service Getting guardrail");
+            bedrockV1Service.getGuardrail();
+            log.info("bedrockV1Service FINISH Getting guardrail");
+        } catch (Exception e) {
+            log.warn("Bedrock V1 service unavailable, continuing with reduced functionality: {}", e.getMessage());
+        }
+
         log.info("DEBUG: CALLING BEDROCK petId = " + petId);
         log.info("DEBUG: bedrockRuntimeV1Service Invoking Titan model");
         String petType = "pets";
@@ -116,17 +126,36 @@ class PetResource {
             log.error("Failed to find pet: '{}' ", petId);
         }
 
-        bedrockRuntimeV1Service.invokeTitanModel(petType);
-        log.info("bedrockRuntimeV1Service FINISH Invoking Titan model");
-        log.info("bedrockAgentV2Service Getting knowledge base");
-        bedrockAgentV2Service.bedrockAgentGetKnowledgeBaseV2();
-        log.info("bedrockAgentV2Service FINISH Getting knowledge base");
-        log.info("bedrockV2Service Getting guardrail");
-        bedrockV2Service.getGuardrail();
-        log.info("bedrockV2Service FINISH Getting guardrail");
-        log.info("bedrockRuntimeV2Service Invoking Anthropic claude");
-        bedrockRuntimeV2Service.invokeAnthropicClaude(petType);
-        log.info("bedrockRuntimeV2Service FINISH Invoking Anthropic claude");
+        try {
+            bedrockRuntimeV1Service.invokeTitanModel(petType);
+            log.info("bedrockRuntimeV1Service FINISH Invoking Titan model");
+        } catch (Exception e) {
+            log.warn("Bedrock Runtime V1 service unavailable, continuing: {}", e.getMessage());
+        }
+
+        try {
+            log.info("bedrockAgentV2Service Getting knowledge base");
+            bedrockAgentV2Service.bedrockAgentGetKnowledgeBaseV2();
+            log.info("bedrockAgentV2Service FINISH Getting knowledge base");
+        } catch (Exception e) {
+            log.warn("Bedrock Agent V2 service unavailable, continuing with reduced functionality: {}", e.getMessage());
+        }
+
+        try {
+            log.info("bedrockV2Service Getting guardrail");
+            bedrockV2Service.getGuardrail();
+            log.info("bedrockV2Service FINISH Getting guardrail");
+        } catch (Exception e) {
+            log.warn("Bedrock V2 service unavailable, continuing with reduced functionality: {}", e.getMessage());
+        }
+
+        try {
+            log.info("bedrockRuntimeV2Service Invoking Anthropic claude");
+            bedrockRuntimeV2Service.invokeAnthropicClaude(petType);
+            log.info("bedrockRuntimeV2Service FINISH Invoking Anthropic claude");
+        } catch (Exception e) {
+            log.warn("Bedrock Runtime V2 service unavailable, continuing: {}", e.getMessage());
+        }
     }
 
     @PutMapping("/owners/{ownerId}/pets/{petId}")
@@ -161,31 +190,33 @@ class PetResource {
 
         PetDetails detail = new PetDetails(findPetById(petId));
 
-        // enrich with insurance
         PetInsurance petInsurance = null;
         try{
             ResponseEntity<PetInsurance> response = restTemplate.getForEntity("http://insurance-service/pet-insurances/" + detail.getId(), PetInsurance.class);
             petInsurance = response.getBody();
         }
         catch (Exception ex){
-            ex.printStackTrace();
+            log.warn("Insurance service unavailable: {}", ex.getMessage());
         }
         if(petInsurance == null){
-            System.out.println("empty petInsurance");
+            log.debug("Empty petInsurance");
             return detail;
         }
         detail.setInsurance_id(petInsurance.getInsurance_id());
         detail.setInsurance_name(petInsurance.getInsurance_name());
         detail.setPrice(petInsurance.getPrice());
 
-        // enrich with nutrition
         PetNutrition petNutrition = null;
-        // will throw exception when the pet type is not found
-        ResponseEntity<PetNutrition> response = restTemplate.getForEntity("http://nutrition-service/nutrition/" + detail.getType().getName(), PetNutrition.class);
-        petNutrition = response.getBody();
+        try {
+            ResponseEntity<PetNutrition> response = restTemplate.getForEntity("http://nutrition-service/nutrition/" + detail.getType().getName(), PetNutrition.class);
+            petNutrition = response.getBody();
+        } catch (Exception ex) {
+            log.warn("Nutrition service unavailable: {}", ex.getMessage());
+            return detail;
+        }
 
         if(petNutrition == null){
-            System.out.println("empty petNutrition");
+            log.debug("Empty petNutrition");
             return detail;
         }
         detail.setNutritionFacts(petNutrition.getFacts());
