@@ -56,7 +56,7 @@ jobs:
         uses: mxiamxia/aws-apm-action@apm-exp
         with:
           bot_name: "@awsapm"
-          cli_tool: "xxxclaude_code"
+          cli_tool: "claude_code"
 
       # Step 2: Execute investigation with Claude Code
       - name: Run Claude Investigation
