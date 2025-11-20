@@ -9,9 +9,13 @@ import org.springframework.samples.petclinic.customers.Util;
 import org.springframework.stereotype.Component;
 import software.amazon.awssdk.auth.credentials.WebIdentityTokenFileCredentialsProvider;
 import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
+import software.amazon.awssdk.http.apache.ApacheHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.*;
+
+import java.time.Duration;
 
 @Component
 @Slf4j
@@ -19,16 +23,29 @@ public class BedrockRuntimeV2Service {
     final BedrockRuntimeClient bedrockRuntimeV2Client;
 
     public BedrockRuntimeV2Service() {
-        // AWS web identity is set for EKS clusters, if these are not set then use default credentials
+        ApacheHttpClient httpClient = ApacheHttpClient.builder()
+                .socketTimeout(Duration.ofSeconds(60))
+                .connectionTimeout(Duration.ofSeconds(10))
+                .build();
+
+        ClientOverrideConfiguration clientConfig = ClientOverrideConfiguration.builder()
+                .apiCallTimeout(Duration.ofSeconds(90))
+                .apiCallAttemptTimeout(Duration.ofSeconds(60))
+                .build();
+
         if (System.getenv("AWS_WEB_IDENTITY_TOKEN_FILE") == null && System.getProperty("aws.webIdentityTokenFile") == null) {
             bedrockRuntimeV2Client = BedrockRuntimeClient.builder()
                     .region(Region.of(Util.REGION_FROM_EC2))
+                    .httpClient(httpClient)
+                    .overrideConfiguration(clientConfig)
                     .build();
         }
         else {
             bedrockRuntimeV2Client = BedrockRuntimeClient.builder()
                     .region(Region.of(Util.REGION_FROM_EKS))
                     .credentialsProvider(WebIdentityTokenFileCredentialsProvider.create())
+                    .httpClient(httpClient)
+                    .overrideConfiguration(clientConfig)
                     .build();
         }
 
@@ -99,8 +116,8 @@ public class BedrockRuntimeV2Service {
 
             return generatedText;
         } catch (Exception e) {
-            log.error("Failed to invoke Anthropic claude: Error: %s%n ",e.getMessage());
-            throw e;
+            log.error("Failed to invoke Anthropic claude: Error: {}",e.getMessage(), e);
+            return "Bedrock service temporarily unavailable";
         }
     }
 
