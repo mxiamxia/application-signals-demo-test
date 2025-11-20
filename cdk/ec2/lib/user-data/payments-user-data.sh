@@ -41,21 +41,6 @@ cat <<'EOC' > /amazon-cloudwatch-agent.json
                {
                   "selectors":[
                      {
-                        "dimension":"RemoteOperation",
-                        "match":"GET /owners"
-                     }
-                  ],
-                  "replacements":[
-                     {
-                        "target_dimension":"RemoteService",
-                        "value":"customers-service-ec2-java"
-                     }
-                  ],
-                  "action":"replace"
-               },
-               {
-                  "selectors":[
-                     {
                         "dimension":"RemoteService",
                         "match":"169.254.169.254*"
                      }
@@ -104,15 +89,17 @@ EOC
   -a fetch-config -m ec2 -s \
   -c file:/amazon-cloudwatch-agent.json
 
+
+
 # Switch to ec2-user to run commands
 sudo -iu ec2-user bash <<'EOF'
 set -x
 # Set home directory
 cd ~
 
-# Clone the application repository
-git clone https://github.com/aws-observability/application-signals-demo.git
-cd application-signals-demo/
+# Clone the current application repository
+git clone https://github.com/mxiamxia/application-signals-demo-test.git
+cd application-signals-demo-test/
 
 # Function to wait for a URL to become accessible
 wait_for_url() {
@@ -132,13 +119,18 @@ wait_for_url "http://setup.demo.local:8761"
 # Retrieve database credentials from Secrets Manager
 TOKEN=$(curl -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 REGION=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" "http://169.254.169.254/latest/meta-data/placement/region")
+DB_SECRET=$(aws secretsmanager get-secret-value --secret-id PetClinicDBCredentials --region $REGION --query 'SecretString' --output text)
+DB_USERNAME=$(echo "$DB_SECRET" | jq -r '.username')
+DB_PASSWORD=$(echo "$DB_SECRET" | jq -r '.password')
+echo "db username: $DB_USERNAME"
+echo "db password: $DB_PASSWORD"
 
-service_name="payments-service-ec2-dotnet"
+service_name="payment-service-ec2-dotnet"
 
 # Start the application in a tmux session
 tmux start-server
 sleep 10
-tmux new-session -s payments -d
-tmux send-keys -t payments "cd /home/ec2-user/application-signals-demo/dotnet-petclinic-payment/PetClinic.PaymentService" C-m
-tmux send-keys -t payments "./ec2-setup.sh setup.demo.local $service_name" C-m
+tmux new-session -s payment -d
+tmux send-keys -t payment "cd /home/ec2-user/application-signals-demo-test/dotnet-petclinic-payment/PetClinic.PaymentService" C-m
+tmux send-keys -t payment "./ec2-setup.sh $DB_PASSWORD setup.demo.local $service_name" C-m
 EOF
