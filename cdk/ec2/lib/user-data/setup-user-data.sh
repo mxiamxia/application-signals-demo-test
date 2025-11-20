@@ -55,9 +55,9 @@ set -x
 # Set home directory
 cd ~
 
-# Clone the application repository
-git clone https://github.com/aws-observability/application-signals-demo.git
-cd application-signals-demo/
+# Clone the current application repository
+git clone https://github.com/mxiamxia/application-signals-demo-test.git
+cd application-signals-demo-test/
 
 # Build the Config Server and Discovery Server
 ./mvnw clean install -DskipTests
