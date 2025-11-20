@@ -1,3 +1,4 @@
+require('@aws/aws-distro-opentelemetry-node-autoinstrumentation');
 require('dotenv').config();
 
 const express = require('express');
