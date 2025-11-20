@@ -25,8 +25,8 @@ on:
 jobs:
   awsapm-investigation:
     if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@awsapm')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@awsapm') || contains(github.event.issue.title, '@awsapm')))
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@xawsapm')) ||
+      (github.event_name == 'issues' && (contains(github.event.issue.body, '@xawsapm') || contains(github.event.issue.title, '@xawsapm')))
     runs-on: ubuntu-latest
 
     permissions:
