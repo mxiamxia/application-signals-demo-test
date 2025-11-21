@@ -61,6 +61,8 @@ jobs:
       # Step 2: Execute investigation with Claude Code
       - name: Run Claude Investigation
         id: claude
+        timeout-minutes: 5
+        continue-on-error: false
         uses: anthropics/claude-code-base-action@beta
         with:
           use_bedrock: "true"
