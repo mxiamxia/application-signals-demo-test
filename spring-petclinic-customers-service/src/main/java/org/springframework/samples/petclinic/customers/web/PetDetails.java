@@ -53,7 +53,9 @@ class PetDetails {
     PetDetails(Pet pet) {
         this.id = pet.getId();
         this.name = pet.getName();
-        this.owner = pet.getOwner().getFirstName() + " " + pet.getOwner().getLastName();
+        this.owner = (pet.getOwner() != null) 
+            ? pet.getOwner().getFirstName() + " " + pet.getOwner().getLastName()
+            : "Unknown Owner";
         this.birthDate = pet.getBirthDate();
         this.type = pet.getType();
         this.insurance_id = 0;
