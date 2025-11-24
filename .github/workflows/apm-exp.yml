@@ -48,7 +48,7 @@ jobs:
       # Step 1: Prepare AWS MCP configuration and investigation prompt
       - name: Prepare Investigation Context
         id: prepare
-        uses: aws-actions/application-observability-for-aws@v1
+        uses: mxiamxia/aws-apm-action@retry
         with:
           bot_name: "@awsapm"
           cli_tool: "claude_code"
