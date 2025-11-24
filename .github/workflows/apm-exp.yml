@@ -82,7 +82,7 @@ jobs:
 
       # Step 3: Post results back to GitHub issue/PR
       - name: Post Investigation Results
-        if: always() && steps.prepare.outputs.contains_trigger == 'true'
+        if: always()
         uses: mxiamxia/aws-apm-action@retry
         with:
           cli_tool: "claude_code"
