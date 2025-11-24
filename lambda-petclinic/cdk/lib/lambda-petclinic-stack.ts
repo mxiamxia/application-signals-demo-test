@@ -178,7 +178,7 @@ export class LambdaPetClinicStack extends cdk.Stack {
     const lambdaVersioning = new LambdaVersioning(this, 'GetAppointmentVersioning', {
       lambdaFunction: getLambda,
       alternateCodePath: `${alternateCodeAsset.s3BucketName}/${alternateCodeAsset.s3ObjectKey}`,
-      alternateVersionWeight: 0.5, // 50% traffic to the alternate version
+      alternateVersionWeight: 0,
       aliasName: 'prod',
     });
 
