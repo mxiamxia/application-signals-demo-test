@@ -71,7 +71,7 @@ jobs:
       - name: Run Claude Investigation - Attempt 2
         id: claude-retry
         if: steps.claude.outcome == 'failure'
-        uses: mxiamxia/aws-apm-action@retry
+        uses: anthropics/claude-code-base-action@beta
         timeout-minutes: 3
         with:
           use_bedrock: "true"
