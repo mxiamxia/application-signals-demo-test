@@ -60,7 +60,7 @@ jobs:
         id: claude
         continue-on-error: true
         uses: anthropics/claude-code-base-action@beta
-        timeout-minutes: 5
+        timeout-minutes: 10
         with:
           use_bedrock: "true" 
           # Set to any Bedrock Model ID 
@@ -74,7 +74,7 @@ jobs:
         id: claude-retry
         if: steps.claude.outcome == 'failure'
         uses: anthropics/claude-code-base-action@beta
-        timeout-minutes: 5
+        timeout-minutes: 10
         with:
           use_bedrock: "true"
           model: "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
