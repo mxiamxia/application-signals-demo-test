@@ -35,6 +35,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.samples.petclinic.visits.Util.WellKnownAttributes;
 import org.springframework.samples.petclinic.visits.aws.DdbService;
+import org.springframework.samples.petclinic.visits.aws.SqsService;
 import org.springframework.samples.petclinic.visits.model.Visit;
 import org.springframework.samples.petclinic.visits.model.VisitRepository;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -64,6 +65,8 @@ class VisitResource {
     private final VisitRepository visitRepository;
 
     private final DdbService ddbService;
+
+    private final SqsService sqsService;
 
 
     @PostMapping("owners/{ownerId}/pets/{petId}/visits")
@@ -103,6 +106,7 @@ class VisitResource {
     @WithSpan("saveVisit")
     private Visit saveVisit(Visit visit, int petId) {
         ddbService.putItems();
+        sqsService.sendBatchMsg();
         visit.setPetId(petId);
         // petId 9 is used for testing high traffic
         // To avoid overwhelming visitRepository, we don't want to save the visit.
