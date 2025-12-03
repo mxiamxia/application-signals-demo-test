@@ -33,7 +33,7 @@ public class DdbService {
 
     public DdbService() {
         RetryPolicy dynamoDbRetryPolicy = RetryPolicy.builder()
-            .numRetries(1)
+            .numRetries(5)
             .build();
         ClientOverrideConfiguration clientOverrideConfiguration = ClientOverrideConfiguration.builder()
             .retryPolicy(dynamoDbRetryPolicy).build();
@@ -80,8 +80,8 @@ public class DdbService {
                     .attributeType(ScalarAttributeType.S)
                     .build())
                 .provisionedThroughput(ProvisionedThroughput.builder()
-                    .readCapacityUnits(1L)
-                    .writeCapacityUnits(1L)
+                    .readCapacityUnits(5L)
+                    .writeCapacityUnits(5L)
                     .build())
                 .build();
 
@@ -173,10 +173,9 @@ public class DdbService {
                 "retrying. Error: " + rlee.getMessage());
             throw rlee;
         } catch (ProvisionedThroughputExceededException ptee) {
-            log.info("Request rate is too high. If you're using a custom retry strategy make sure to retry with exponential back-off. " +
-                "Otherwise consider reducing frequency of requests or increasing provisioned capacity for your table or secondary index. Error: " +
+            log.warn("Request rate is too high. DynamoDB throttling detected. The SDK will automatically retry with exponential back-off. " +
+                "Consider increasing provisioned capacity for your table or secondary index. Error: " +
                 ptee.getMessage());
-            throw ptee;
         } catch (ResourceNotFoundException rnfe) {
             log.info("One of the tables was not found, verify table exists before retrying. Error: " + rnfe.getMessage());
             throw rnfe;
