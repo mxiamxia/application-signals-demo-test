@@ -50,7 +50,6 @@ def consult_nutrition_specialist(query, agent_arn, session_id=None):
             qualifier='DEFAULT',
             payload=json.dumps({'prompt': query})
         )
-        # Read the streaming response
         if 'response' in response:
             body = response['response'].read().decode('utf-8')
             return body
@@ -65,25 +64,28 @@ agent_app = BedrockAgentCoreApp()
 session_id = f"clinic-session-{str(uuid.uuid4())}"
 
 system_prompt = (
-    "You are a helpful pet clinic assistant. You can help with:\n"
-    "- General clinic information (hours, contact info)\n"
-    "- Emergency situations and contacts\n"
-    "- Directing clients to appropriate specialists\n"
+    "You are a helpful pet clinic assistant. Provide CONCISE, helpful responses.\n\n"
+    "You can help with:\n"
+    "- General clinic info (hours, contact)\n"
+    "- Emergency situations\n"
+    "- Specialist referrals\n"
     "- Scheduling guidance\n"
-    "- Basic medical guidance and when to seek veterinary care\n\n"
-    "IMPORTANT GUIDELINES:\n"
-    "- ONLY use the consult_nutrition_specialist tool for EXPLICIT nutrition-related questions (diet, feeding, supplements, food recommendations, what to feed, can pets eat X, nutrition advice)\n"
-    "- DO NOT use the nutrition agent for general clinic questions, appointments, hours, emergencies, or non-nutrition medical issues\n"
-    "- NEVER expose or mention agent ARNs in your responses to users\n"
-    "- For medical concerns, provide general guidance and recommend scheduling a veterinary appointment\n"
-    "- For emergencies, immediately provide emergency contact information\n"
-    "- Always recommend consulting with a veterinarian for proper diagnosis and treatment\n\n"
-    f"Your session ID is: {session_id}. When calling consult_nutrition_specialist, use this session_id parameter."
+    "- Basic medical guidance\n\n"
+    "RESPONSE RULES:\n"
+    "- Be direct and brief (1-2 sentences when possible)\n"
+    "- Only elaborate when specifically asked\n"
+    "- Avoid unnecessary explanations\n\n"
+    "TOOL USAGE:\n"
+    "- ONLY use consult_nutrition_specialist for explicit nutrition questions (diet, feeding, supplements, food recommendations)\n"
+    "- DO NOT use it for clinic operations, appointments, emergencies, or non-nutrition medical issues\n"
+    "- NEVER expose agent ARNs to users\n\n"
+    f"Session ID: {session_id} (use when calling consult_nutrition_specialist)"
 )
 
 def create_clinic_agent():
     model = BedrockModel(
         model_id=BEDROCK_MODEL_ID,
+        max_tokens=512
     )
     
     tools = [get_clinic_hours, get_emergency_contact, get_specialist_referral, consult_nutrition_specialist, get_appointment_availability]
