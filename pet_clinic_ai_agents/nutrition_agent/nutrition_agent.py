@@ -2,10 +2,16 @@ from strands import Agent, tool
 import uvicorn
 import yaml
 import random
+import os
+import logging
 from strands.models import BedrockModel
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 BEDROCK_MODEL_ID = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Exceptions
 class TimeoutException(Exception):
@@ -33,11 +39,15 @@ class NetworkException(Exception):
         super().__init__(message)
         self.details = kwargs
 
+# Load pet database with absolute path
 try:
-    with open('pet_database.yaml', 'r') as f:
+    database_path = os.path.join(os.path.dirname(__file__), 'pet_database.yaml')
+    with open(database_path, 'r') as f:
         ANIMAL_DATA = yaml.safe_load(f)
-except Exception:
+    logger.info(f"Successfully loaded pet database from {database_path}")
+except Exception as e:
     ANIMAL_DATA = None
+    logger.error(f"Failed to load pet database: {e}")
 
 agent = None
 agent_app = BedrockAgentCoreApp()
@@ -136,7 +146,6 @@ async def invoke(payload, context):
     """
     Invoke the nutrition agent with a payload
     """
-    maybe_throw_error(threshold=0.35)
     
     agent = create_nutrition_agent()
     msg = payload.get('prompt', '')
