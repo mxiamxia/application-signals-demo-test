@@ -20,8 +20,23 @@ def lambda_handler(event, context):
     owners = query_params.get('owners')
     pet_id = query_params.get('petid')
 
-    if owners is None or pet_id is None:
-        raise Exception('Missing owner or pet_id')
+    if owners is None:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': 'Missing required parameter: owners'}),
+            'headers': {
+                'Content-Type': 'application/json'
+            }
+        }
+    
+    if pet_id is None:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'error': 'Missing required parameter: petid'}),
+            'headers': {
+                'Content-Type': 'application/json'
+            }
+        }
 
     if record_id is None:
         return {
