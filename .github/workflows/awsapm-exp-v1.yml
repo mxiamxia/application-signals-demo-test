@@ -44,7 +44,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          aws-region: ${{ vars.AWS_REGION || 'ap-south-1' }}
 
       # Step 1: Prepare AWS MCP configuration and investigation prompt
       - name: Prepare Investigation Context
