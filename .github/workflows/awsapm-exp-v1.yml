@@ -75,7 +75,7 @@ jobs:
           use_bedrock: "true"
 
           # Custom Claude CLI arguments with MCP config, allowed tools, and Bedrock model
-          claude_args: "--mcp-config ${{ steps.prepare.outputs.mcp_config_file }} --allowed-tools ${{ steps.prepare.outputs.allowed_tools }} --model us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+          claude_args: "--mcp-config ${{ steps.prepare.outputs.mcp_config_file }} --allowed-tools ${{ steps.prepare.outputs.allowed_tools }} --model anthropic.claude-sonnet-4-5-20250929-v1:0"
 
           # Use GitHub workflow token for GitHub operations
           github_token: ${{ secrets.GITHUB_TOKEN }}
