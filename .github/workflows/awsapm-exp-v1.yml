@@ -49,7 +49,7 @@ jobs:
       # Step 1: Prepare AWS MCP configuration and investigation prompt
       - name: Prepare Investigation Context
         id: prepare
-        uses: aws-actions/application-observability-for-aws@v1
+        uses: aws-actions/application-observability-for-aws@fix/issues-toctou-comment-filtering
         with:
           bot_name: "@awsapm"
           cli_tool: "claude_code"
@@ -89,7 +89,7 @@ jobs:
       # Step 4: Post results back to GitHub issue/PR
       - name: Post Investigation Results
         if: always()
-        uses: aws-actions/application-observability-for-aws@v1
+        uses: aws-actions/application-observability-for-aws@fix/issues-toctou-comment-filtering
         with:
           cli_tool: "claude_code"
           comment_id: ${{ steps.prepare.outputs.awsapm_comment_id }}
