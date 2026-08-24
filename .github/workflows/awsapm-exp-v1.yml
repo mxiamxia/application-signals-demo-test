@@ -1,19 +1,11 @@
-# This workflow demonstrates how to use the Application Observability for AWS action
-# with Claude Code using the anthropics/claude-code-action@v1.
+# Application Observability for AWS — mirrors the working setup from
+# aws-observability/application-signals-demo (.github/workflows/awsapm.yml):
+# uses anthropics/claude-code-base-action with dedicated mcp_config/allowed_tools
+# inputs (not claude-code-action@v1 with claude_args), plus a retry on timeout.
 #
-# Key Features:
-# - Brings your own Bedrock model (pay-per-token usage on your AWS account)
-# - Integrates with AWS Application Signals and CloudWatch
-# - Posts investigation results back to GitHub issues/PRs
-#
-# Prerequisites:
-# 1. AWS IAM role with OIDC trust for GitHub Actions
-# 2. Bedrock InvokeModel permissions in your IAM role
-# 3. Application Signals and CloudWatch permissions
-#
-# Setup:
-# 1. Create repository secret AWS_IAM_ROLE_ARN with your IAM role ARN
-# 2. Copy this file to .github/workflows/awsapm.yml in your repository
+# Test-specific deviations from that reference:
+# - prepare/post use the fix/issues-toctou-comment-filtering branch (under test)
+# - model is global.anthropic.claude-sonnet-5
 
 name: Application observability for AWS (Claude Code Action)
 
@@ -54,44 +46,37 @@ jobs:
           bot_name: "@awsapm"
           cli_tool: "claude_code"
 
-      # Step 2: Read the prompt file content
-      - name: Read Prompt File
-        id: read_prompt
-        run: |
-          PROMPT_CONTENT=$(cat ${{ steps.prepare.outputs.prompt_file }})
-          echo "prompt<<EOF" >> $GITHUB_OUTPUT
-          echo "$PROMPT_CONTENT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      # Step 3: Execute investigation with Claude Code Action
-      - name: Run Claude Investigation
+      # Step 2: Execute investigation with Claude Code (with retry on timeout)
+      # See https://github.com/anthropics/claude-code-action/issues/693
+      - name: Run Claude Investigation - Attempt 1
         id: claude
-        uses: anthropics/claude-code-action@v1
+        continue-on-error: true
+        uses: anthropics/claude-code-base-action@e8132bc5e637a42c27763fc757faa37e1ee43b34 #v0.0.63
         with:
-          # Custom prompt from the prepared file
-          prompt: ${{ steps.read_prompt.outputs.prompt }}
-
-          # Use AWS Bedrock with OIDC authentication
           use_bedrock: "true"
+          model: "global.anthropic.claude-sonnet-5"
+          prompt_file: ${{ steps.prepare.outputs.prompt_file }}
+          mcp_config: ${{ steps.prepare.outputs.mcp_config_file }}
+          allowed_tools: ${{ steps.prepare.outputs.allowed_tools }}
 
-          # Custom Claude CLI arguments with MCP config, allowed tools, and Bedrock model
-          claude_args: "--mcp-config ${{ steps.prepare.outputs.mcp_config_file }} --allowed-tools ${{ steps.prepare.outputs.allowed_tools }} --model global.anthropic.claude-sonnet-5"
+      # Retry if the first attempt fails or times out
+      - name: Run Claude Investigation - Attempt 2
+        id: claude-retry
+        if: steps.claude.outcome == 'failure'
+        uses: anthropics/claude-code-base-action@e8132bc5e637a42c27763fc757faa37e1ee43b34 #v0.0.63
+        with:
+          use_bedrock: "true"
+          model: "global.anthropic.claude-sonnet-5"
+          prompt_file: ${{ steps.prepare.outputs.prompt_file }}
+          mcp_config: ${{ steps.prepare.outputs.mcp_config_file }}
+          allowed_tools: ${{ steps.prepare.outputs.allowed_tools }}
 
-          # Use GitHub workflow token for GitHub operations
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-
-          # Optional: Custom settings
-          settings: |
-            {
-              "maxTurns": 20
-            }
-
-      # Step 4: Post results back to GitHub issue/PR
+      # Step 3: Post results back to GitHub issue/PR
       - name: Post Investigation Results
         if: always()
         uses: aws-actions/application-observability-for-aws@fix/issues-toctou-comment-filtering
         with:
           cli_tool: "claude_code"
           comment_id: ${{ steps.prepare.outputs.awsapm_comment_id }}
-          output_file: ${{ steps.claude.outputs.execution_file }}
-          output_status: ${{ steps.claude.outcome }}
+          output_file: ${{ steps.claude.outputs.execution_file || steps.claude-retry.outputs.execution_file }}
+          output_status: ${{ steps.claude.outputs.conclusion || steps.claude-retry.outputs.conclusion }}
