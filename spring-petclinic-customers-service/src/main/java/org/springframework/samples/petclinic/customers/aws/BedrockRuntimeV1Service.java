@@ -46,10 +46,10 @@ public class BedrockRuntimeV1Service {
     public String invokeTitanModel(String petType) {
         try {
             String modelId = "amazon.titan-text-express-v1";
-            String inputText = String.format("What's the common disease for a %s?", petType);
+            String inputText = String.format("What's the common disease for a %s? Be concise.", petType);
             float temperature = 0.8f;
             float topP = 0.9f;
-            int maxTokenCount = 1000;
+            int maxTokenCount = 500; // Limited to reduce costs
 
             JSONObject textGenerationConfig = new JSONObject();
             textGenerationConfig.put("temperature", temperature);

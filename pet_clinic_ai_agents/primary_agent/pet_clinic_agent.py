@@ -8,6 +8,8 @@ from strands.models import BedrockModel
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 BEDROCK_MODEL_ID = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+MAX_INPUT_TOKENS = 500  # Token limit for inputs
+MAX_OUTPUT_TOKENS = 1000  # Token limit for outputs
 
 @tool
 def get_clinic_hours():
@@ -77,13 +79,15 @@ system_prompt = (
     "- NEVER expose or mention agent ARNs in your responses to users\n"
     "- For medical concerns, provide general guidance and recommend scheduling a veterinary appointment\n"
     "- For emergencies, immediately provide emergency contact information\n"
-    "- Always recommend consulting with a veterinarian for proper diagnosis and treatment\n\n"
+    "- Always recommend consulting with a veterinarian for proper diagnosis and treatment\n"
+    "- Keep responses concise and within token limits\n\n"
     f"Your session ID is: {session_id}. When calling consult_nutrition_specialist, use this session_id parameter."
 )
 
 def create_clinic_agent():
     model = BedrockModel(
         model_id=BEDROCK_MODEL_ID,
+        max_tokens=MAX_OUTPUT_TOKENS,  # Apply output token limit
     )
     
     tools = [get_clinic_hours, get_emergency_contact, get_specialist_referral, consult_nutrition_specialist, get_appointment_availability]
@@ -97,6 +101,13 @@ async def invoke(payload, context):
     """ 
     agent = create_clinic_agent()
     msg = payload.get('prompt', '')
+    
+    # Truncate input if it exceeds token limit (approximate)
+    # Assuming ~4 chars per token as a rough estimate
+    max_chars = MAX_INPUT_TOKENS * 4
+    if len(msg) > max_chars:
+        msg = msg[:max_chars]
+    
     response_data = []
     
     async for event in agent.stream_async(msg):
