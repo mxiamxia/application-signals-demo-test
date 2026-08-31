@@ -83,8 +83,26 @@ class VisitResource {
 
     @WithSpan("validateDate")
     private void validateDate(Visit visit) {
-        Date currentDate = new Date();
+        if (visit == null) {
+            String message = "Visit object cannot be null.";
+            IllegalArgumentException exception = new IllegalArgumentException(message);
+            Span currentSpan = Span.current();
+            currentSpan.recordException(exception);
+            currentSpan.setStatus(StatusCode.ERROR, message);
+            throw exception;
+        }
+
         Date visitDate = visit.getDate();
+        if (visitDate == null) {
+            String message = "Visit date cannot be null.";
+            IllegalArgumentException exception = new IllegalArgumentException(message);
+            Span currentSpan = Span.current();
+            currentSpan.recordException(exception);
+            currentSpan.setStatus(StatusCode.ERROR, message);
+            throw exception;
+        }
+
+        Date currentDate = new Date();
         long durationInDays = (visitDate.getTime() - currentDate.getTime())/1000/3600/24;
         log.info("New visit date is {} days from today", durationInDays);
         if (durationInDays > 30) {
@@ -102,6 +120,24 @@ class VisitResource {
 
     @WithSpan("saveVisit")
     private Visit saveVisit(Visit visit, int petId) {
+        if (visit == null) {
+            String message = "Visit object cannot be null.";
+            IllegalArgumentException exception = new IllegalArgumentException(message);
+            Span currentSpan = Span.current();
+            currentSpan.recordException(exception);
+            currentSpan.setStatus(StatusCode.ERROR, message);
+            throw exception;
+        }
+
+        if (petId <= 0) {
+            String message = "Pet ID must be greater than 0.";
+            IllegalArgumentException exception = new IllegalArgumentException(message);
+            Span currentSpan = Span.current();
+            currentSpan.recordException(exception);
+            currentSpan.setStatus(StatusCode.ERROR, message);
+            throw exception;
+        }
+
         ddbService.putItems();
         visit.setPetId(petId);
         // petId 9 is used for testing high traffic
@@ -127,6 +163,11 @@ class VisitResource {
 
     @ExceptionHandler(InvalidDateException.class)
     public ResponseEntity<String> handleInvalidDateException(InvalidDateException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleIllegalArgumentException(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
     }
 
