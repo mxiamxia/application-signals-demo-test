@@ -100,6 +100,10 @@ public class DdbService {
 
     public void putItems() {
         log.info("Reaching DdbService.putItems()");
+        if (table == null) {
+            log.error("DynamoDB table is not initialized");
+            throw new IllegalStateException("DynamoDB table is not initialized");
+        }
         try {
             for (int i = 0; i < 1; i++) {
                 String timestamp = Instant.now().toString();
