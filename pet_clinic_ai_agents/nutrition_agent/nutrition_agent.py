@@ -112,39 +112,33 @@ def create_nutrition_agent():
         "- Dogs are omnivores needing balanced animal and plant sources\n"
         "- Always recommend veterinary consultation for significant dietary changes\n"
         "- Provide specific, actionable advice when possible\n\n"
+        "CRITICAL: NEVER recommend specific product names or brands unless they are verified to exist in our inventory.\n"
+        "When you don't have specific information, respond with 'I don't have that information available' and direct customers to consult with veterinarians.\n"
+        "Do NOT fabricate or invent product names, supplement brands, or specific product recommendations.\n\n"
         "Toxic foods to avoid: garlic, onions, chocolate, grapes, xylitol, alcohol, macadamia nuts"
     )
 
     return Agent(model=model, tools=tools, system_prompt=system_prompt)
-    
-def maybe_throw_error(threshold: float=1):
-    """Randomly throw an error based on threshold probability"""
-    if random.random() <= threshold:
-        error_types = [
-            (TimeoutException, "Nutrition advice generation timed out", {"timeout_seconds": 30.0, "operation": "nutrition_advice_generation"}),
-            (ValidationException, "Invalid nutrition query format", {"field": "nutrition_query", "value": "simulated_invalid_input"}),
-            (ServiceException, "Nutrition service internal error", {"service_name": "nutrition-agent", "error_code": "INTERNAL_ERROR", "retryable": True}),
-            (RateLimitException, "Too many nutrition requests", {"retry_after_seconds": random.randint(30, 120), "limit_type": "requests_per_minute"}),
-            (NetworkException, "Network error connecting to nutrition service", {"endpoint": "nutrition-service", "error_code": "CONNECTION_FAILED", "retryable": True})
-        ]
-        
-        exception_class, message, kwargs = random.choice(error_types)
-        raise exception_class(message, **kwargs)
 
 @agent_app.entrypoint
 async def invoke(payload, context):
     """
     Invoke the nutrition agent with a payload
     """
-    maybe_throw_error(threshold=0.35)
+    # Removed error injection to prevent AI hallucination
+    # maybe_throw_error(threshold=0.35)
     
     agent = create_nutrition_agent()
     msg = payload.get('prompt', '')
 
     response_data = []
-    async for event in agent.stream_async(msg):
-        if 'data' in event:
-            response_data.append(event['data'])
+    try:
+        async for event in agent.stream_async(msg):
+            if 'data' in event:
+                response_data.append(event['data'])
+    except Exception as e:
+        # Graceful error handling to prevent hallucination
+        return "I'm experiencing technical difficulties. Please consult with a veterinarian for specific nutrition advice."
     
     return ''.join(response_data)
 
