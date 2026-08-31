@@ -37,10 +37,15 @@ def get_appointment_availability():
 
 @tool
 def consult_nutrition_specialist(query, agent_arn, session_id=None):
-    """Delegate nutrition questions to the specialized nutrition agent. Requires the nutrition agent ARN as a parameter."""
+    """Delegate nutrition questions to the specialized nutrition agent. Requires the nutrition agent ARN as a parameter.
+    
+    IMPORTANT: This function may return an error message starting with 'ERROR:' if nutrition information is unavailable.
+    When this happens, you MUST inform the customer honestly that nutrition data is not available.
+    NEVER generate or hallucinate nutrition recommendations when you receive an error response.
+    """
     
     if not agent_arn:
-        return "Nutrition specialist configuration error. Please call (555) 123-PETS ext. 201."
+        return "ERROR: Nutrition specialist configuration error. Please call (555) 123-PETS ext. 201."
     
     try:
         client = boto3.client('bedrock-agentcore')
@@ -55,10 +60,20 @@ def consult_nutrition_specialist(query, agent_arn, session_id=None):
             body = response['response'].read().decode('utf-8')
             return body
         else:
-            return "Our nutrition specialist is experiencing high demand. Please try again in a few moments or call (555) 123-PETS ext. 201."
+            return "ERROR: Our nutrition specialist is experiencing high demand. Please try again in a few moments or call (555) 123-PETS ext. 201."
     except Exception as e:
         print(f"Error calling nutrition specialist: {e}")
-        return "Unable to reach our nutrition specialist. Please call (555) 123-PETS ext. 201."
+        error_msg = str(e)
+        
+        # Handle specific error types
+        if "404" in error_msg or "not found" in error_msg.lower():
+            return "ERROR: Nutrition information is not available for this pet type at this time. Please contact our nutrition specialist directly at (555) 123-PETS ext. 201 for personalized recommendations."
+        elif "ServiceUnavailableException" in error_msg or "unavailable" in error_msg.lower():
+            return "ERROR: The nutrition service is temporarily unavailable. Please try again later or call (555) 123-PETS ext. 201."
+        elif "TimeoutException" in error_msg or "timeout" in error_msg.lower():
+            return "ERROR: The nutrition specialist request timed out. Please try again or call (555) 123-PETS ext. 201."
+        else:
+            return f"ERROR: Unable to reach our nutrition specialist. Please call (555) 123-PETS ext. 201 for assistance."
 
 agent = None
 agent_app = BedrockAgentCoreApp()
@@ -71,9 +86,16 @@ system_prompt = (
     "- Directing clients to appropriate specialists\n"
     "- Scheduling guidance\n"
     "- Basic medical guidance and when to seek veterinary care\n\n"
-    "IMPORTANT GUIDELINES:\n"
+    "CRITICAL GUIDELINES FOR NUTRITION QUESTIONS:\n"
     "- ONLY use the consult_nutrition_specialist tool for EXPLICIT nutrition-related questions (diet, feeding, supplements, food recommendations, what to feed, can pets eat X, nutrition advice)\n"
     "- DO NOT use the nutrition agent for general clinic questions, appointments, hours, emergencies, or non-nutrition medical issues\n"
+    "- WHEN the consult_nutrition_specialist tool returns a response starting with 'ERROR:', you MUST:\n"
+    "  1. Acknowledge that nutrition information is currently unavailable for that pet type\n"
+    "  2. Provide the contact information included in the error message\n"
+    "  3. NEVER generate or make up nutrition recommendations\n"
+    "  4. NEVER pretend you have access to nutrition data when you received an error\n"
+    "- Example response when nutrition data is unavailable: 'I apologize, but we don't currently have nutrition information available for that type of pet in our database. For personalized nutrition recommendations, please contact our nutrition specialist directly at (555) 123-PETS ext. 201.'\n\n"
+    "OTHER GUIDELINES:\n"
     "- NEVER expose or mention agent ARNs in your responses to users\n"
     "- For medical concerns, provide general guidance and recommend scheduling a veterinary appointment\n"
     "- For emergencies, immediately provide emergency contact information\n"
