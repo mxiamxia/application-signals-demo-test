@@ -47,6 +47,14 @@ create_cluster() {
         echo "Error: Failed to attach AWSXrayFullAccess policy to $node_role_name"
         exit 1
       fi
+
+      aws iam attach-role-policy --role-name "$node_role_name" --region $region --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      if [[ $? -eq 0 ]]; then
+        echo "Successfully attached CloudWatchAgentServerPolicy to $node_role_name"
+      else
+        echo "Error: Failed to attach CloudWatchAgentServerPolicy to $node_role_name"
+        exit 1
+      fi
     else
       echo "Error: Failed to retrieve the node role name for cluster $cluster_name"
       exit 1
