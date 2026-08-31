@@ -13,8 +13,8 @@ public class Config {
     @LoadBalanced
     public RestTemplate getRestTemplate() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(2000);
-        factory.setReadTimeout(2000);
+        factory.setConnectTimeout(10000);
+        factory.setReadTimeout(10000);
         return new RestTemplate(factory);
     }
 }
