@@ -23,7 +23,6 @@ public class BedrockRuntimeV1Service {
     final AmazonBedrockRuntime bedrockRuntimeV1Client;
 
     public BedrockRuntimeV1Service() {
-        // AWS web identity is set for EKS clusters, if these are not set then use default credentials
         if (System.getenv("REGION_FROM_ECS") != null) {
             String regionName = System.getenv("REGION_FROM_ECS");
             bedrockRuntimeV1Client = AmazonBedrockRuntimeClientBuilder.standard()
@@ -47,9 +46,9 @@ public class BedrockRuntimeV1Service {
         try {
             String modelId = "amazon.titan-text-express-v1";
             String inputText = String.format("What's the common disease for a %s?", petType);
-            float temperature = 0.8f;
+            float temperature = 0.7f;
             float topP = 0.9f;
-            int maxTokenCount = 1000;
+            int maxTokenCount = 200;
 
             JSONObject textGenerationConfig = new JSONObject();
             textGenerationConfig.put("temperature", temperature);

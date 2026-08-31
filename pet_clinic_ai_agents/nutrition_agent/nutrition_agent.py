@@ -7,7 +7,6 @@ from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 BEDROCK_MODEL_ID = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
 
-# Exceptions
 class TimeoutException(Exception):
     def __init__(self, message, **kwargs):
         super().__init__(message)
@@ -95,24 +94,25 @@ def get_nutritional_supplements(pet_type, supplement):
 def create_nutrition_agent():
     model = BedrockModel(
         model_id=BEDROCK_MODEL_ID,
+        max_tokens=512
     )
 
     tools = [get_feeding_guidelines, get_dietary_restrictions, get_nutritional_supplements]
 
     system_prompt = (
-        "You are a specialized pet nutrition expert providing evidence-based dietary guidance.\n\n"
-        "Your expertise covers:\n"
-        "- Feeding guidelines for dogs, cats, fish, horses, birds, rabbits, ferrets, hamsters, guinea pigs, reptiles, and amphibians\n"
-        "- Therapeutic diets for health conditions (diabetes, kidney disease, allergies, obesity, arthritis)\n"
-        "- Food safety and toxic substances to avoid\n"
-        "- Nutritional supplements and their proper use\n"
-        "- Food label interpretation and AAFCO standards\n\n"
+        "You are a specialized pet nutrition expert. Provide CONCISE dietary guidance.\n\n"
+        "RESPONSE RULES:\n"
+        "- Keep responses under 2-3 sentences when possible\n"
+        "- Be direct and actionable\n"
+        "- Avoid lengthy explanations unless specifically requested\n"
+        "- For simple questions, provide simple answers\n\n"
+        "Your expertise: feeding guidelines, therapeutic diets, food safety, supplements, AAFCO standards.\n"
+        "Animals covered: dogs, cats, fish, horses, birds, rabbits, ferrets, hamsters, guinea pigs, reptiles, amphibians.\n\n"
         "Key principles:\n"
-        "- Cats are obligate carnivores requiring animal-based nutrients\n"
-        "- Dogs are omnivores needing balanced animal and plant sources\n"
-        "- Always recommend veterinary consultation for significant dietary changes\n"
-        "- Provide specific, actionable advice when possible\n\n"
-        "Toxic foods to avoid: garlic, onions, chocolate, grapes, xylitol, alcohol, macadamia nuts"
+        "- Cats are obligate carnivores\n"
+        "- Dogs are omnivores\n"
+        "- Recommend vet consultation for significant dietary changes\n\n"
+        "Toxic foods: garlic, onions, chocolate, grapes, xylitol, alcohol, macadamia nuts"
     )
 
     return Agent(model=model, tools=tools, system_prompt=system_prompt)
