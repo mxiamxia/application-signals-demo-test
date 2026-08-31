@@ -36,7 +36,8 @@ public class BedrockRuntimeV2Service {
 
     public String invokeAnthropicClaude(String petType) {
         try {
-            String claudeModelId = "anthropic.claude-v2:1";
+            // Updated to use supported Claude 3.5 Haiku model instead of deprecated claude-v2
+            String claudeModelId = "anthropic.claude-3-5-haiku-20241022-v1:0";
             String prompt = String.format("What are the best preventive measures for common %s diseases?", petType);
             JSONObject userMessage = new JSONObject()
                     .put("role", "user")
@@ -98,9 +99,14 @@ public class BedrockRuntimeV2Service {
                             " }");
 
             return generatedText;
+        } catch (BedrockRuntimeException e) {
+            log.error("Bedrock Runtime Error: {} - Error Code: {}", e.getMessage(), e.awsErrorDetails().errorCode());
+            // Provide fallback response instead of throwing exception to prevent service failures
+            return "Unable to generate AI response at this time. Please consult with a veterinarian for " + petType + " health advice.";
         } catch (Exception e) {
-            log.error("Failed to invoke Anthropic claude: Error: %s%n ",e.getMessage());
-            throw e;
+            log.error("Failed to invoke Anthropic claude: Error: {}", e.getMessage());
+            // Provide fallback response instead of throwing exception
+            return "Unable to generate AI response at this time. Please consult with a veterinarian for " + petType + " health advice.";
         }
     }
 
