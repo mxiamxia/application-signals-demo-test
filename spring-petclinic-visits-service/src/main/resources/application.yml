@@ -3,6 +3,29 @@ spring:
     name: visits-service
   config:
     import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888/}
+  datasource:
+    # Database connection timeout and retry configuration
+    hikari:
+      connection-timeout: 10000  # 10 seconds
+      idle-timeout: 300000       # 5 minutes
+      max-lifetime: 1200000      # 20 minutes
+      maximum-pool-size: 10
+      minimum-idle: 2
+      leak-detection-threshold: 60000  # 1 minute
+      connection-test-query: SELECT 1
+  jpa:
+    properties:
+      hibernate:
+        # Connection handling
+        connection:
+          provider_disables_autocommit: true
+        # Query timeout
+        query:
+          timeout: 30000  # 30 seconds
+        # Enable connection validation
+        c3p0:
+          validate: true
+          idle_test_period: 300
 
 eureka:
   instance:
