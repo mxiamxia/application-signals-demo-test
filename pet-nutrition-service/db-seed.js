@@ -17,7 +17,17 @@ module.exports = function(){
     { pet_type: 'lizard', facts: 'Insects, leafy greens, and calcium supplements' },
     { pet_type: 'snake', facts: 'Whole prey (mice/rats) based on size' },
     { pet_type: 'bird', facts: 'High-quality seeds, pellets, and fresh fruits/veggies' },
-    { pet_type: 'hamster', facts: 'Pellets, grains, fresh vegetables, and occasional fruits' }
+    { pet_type: 'hamster', facts: 'Pellets, grains, fresh vegetables, and occasional fruits' },
+    { pet_type: 'fish', facts: 'High-quality flakes or pellets, live/frozen foods like brine shrimp' },
+    { pet_type: 'rabbit', facts: 'Unlimited timothy hay, limited pellets, fresh leafy greens' },
+    { pet_type: 'guinea_pig', facts: 'Timothy hay, vitamin C-rich pellets, fresh vegetables' },
+    { pet_type: 'ferret', facts: 'High-protein, meat-based kibble or whole prey' },
+    { pet_type: 'turtle', facts: 'Commercial turtle pellets, leafy greens, and occasional protein' },
+    { pet_type: 'parrot', facts: 'Pellets, fresh fruits, vegetables, and nuts' },
+    { pet_type: 'chinchilla', facts: 'Timothy hay, chinchilla pellets, limited treats' },
+    { pet_type: 'hedgehog', facts: 'High-quality cat food, insects, and occasional fruits' },
+    { pet_type: 'goat', facts: 'Quality hay, grains, minerals, and fresh water' },
+    { pet_type: 'horse', facts: 'Hay or pasture grass, grains, salt, and fresh water' }
   ])
     .then(() => logger.info('collection populated'))
     .catch(err => logger.error('error populating collection:', err));
