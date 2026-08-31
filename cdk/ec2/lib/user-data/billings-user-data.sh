@@ -97,9 +97,9 @@ set -x
 # Set home directory
 cd ~
 
-# Clone the application repository
-git clone https://github.com/aws-observability/application-signals-demo.git
-cd application-signals-demo/
+# Clone the current application repository
+git clone https://github.com/mxiamxia/application-signals-demo-test.git
+cd application-signals-demo-test/
 
 # Function to wait for a URL to become accessible
 wait_for_url() {
@@ -131,6 +131,6 @@ service_name="billing-service-ec2-python"
 tmux start-server
 sleep 10
 tmux new-session -s billing -d
-tmux send-keys -t billing "cd /home/ec2-user/application-signals-demo/pet_clinic_billing_service" C-m
+tmux send-keys -t billing "cd /home/ec2-user/application-signals-demo-test/pet_clinic_billing_service" C-m
 tmux send-keys -t billing "./ec2-setup.sh $DB_PASSWORD setup.demo.local $service_name" C-m
 EOF

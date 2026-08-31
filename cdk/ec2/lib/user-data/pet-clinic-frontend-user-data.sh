@@ -238,9 +238,9 @@ set -x
 # Set home directory
 cd ~
 
-# Clone the application repository
-git clone https://github.com/aws-observability/application-signals-demo.git
-cd application-signals-demo/
+# Clone the current application repository
+git clone https://github.com/mxiamxia/application-signals-demo-test.git
+cd application-signals-demo-test/
 
 # Build the Frontend application
 ./mvnw clean install -pl spring-petclinic-api-gateway -am -DskipTests
@@ -273,7 +273,7 @@ tmux new-session -s frontend -d
 tmux send-keys -t frontend "cd spring-petclinic-api-gateway/target/" C-m
 tmux send-keys -t frontend "export CONFIG_SERVER_URL=http://setup.demo.local:8888" C-m
 tmux send-keys -t frontend "export DISCOVERY_SERVER_URL=http://setup.demo.local:8761/eureka" C-m
-tmux send-keys -t frontend "export JAVA_TOOL_OPTIONS=' -javaagent:/home/ec2-user/application-signals-demo/aws-opentelemetry-agent.jar'" C-m
+tmux send-keys -t frontend "export JAVA_TOOL_OPTIONS=' -javaagent:/home/ec2-user/application-signals-demo-test/aws-opentelemetry-agent.jar'" C-m
 tmux send-keys -t frontend "export OTEL_METRICS_EXPORTER=none" C-m
 tmux send-keys -t frontend "export OTEL_LOGS_EXPORTER=none" C-m
 tmux send-keys -t frontend "export OTEL_AWS_APPLICATION_SIGNALS_ENABLED=true" C-m
@@ -286,7 +286,7 @@ tmux send-keys -t frontend "java -jar spring-petclinic-api-gateway-*.jar" C-m
 
 sleep 20
 # start the traffic generator
-cd /home/ec2-user/application-signals-demo/traffic-generator
+cd /home/ec2-user/application-signals-demo-test/traffic-generator
 wget -qO- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
       export NVM_DIR="$HOME/.nvm"
       [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
@@ -294,7 +294,7 @@ nvm install 20
 nvm use 20
 npm install
 tmux new-session -s traffic -d 
-tmux send-keys -t traffic "cd /home/ec2-user/application-signals-demo/traffic-generator" C-m
+tmux send-keys -t traffic "cd /home/ec2-user/application-signals-demo-test/traffic-generator" C-m
 tmux send-keys -t traffic "export URL=http://pet-clinic-frontend.demo.local:8080" C-m
 tmux send-keys -t traffic "node index.js" C-m
 EOF
