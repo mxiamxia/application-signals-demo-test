@@ -50,15 +50,35 @@ def consult_nutrition_specialist(query, agent_arn, session_id=None):
             qualifier='DEFAULT',
             payload=json.dumps({'prompt': query})
         )
-        # Read the streaming response
+        
         if 'response' in response:
             body = response['response'].read().decode('utf-8')
+            
+            not_found_indicators = [
+                "not found in animal database",
+                "no information for",
+                "no dietary restrictions for",
+                "animal database is down"
+            ]
+            
+            if any(indicator.lower() in body.lower() for indicator in not_found_indicators):
+                return f"I apologize, but we don't currently have nutrition information for this specific pet type or query in our database. Please contact our nutrition specialist directly at (555) 123-PETS ext. 201 for personalized guidance."
+            
             return body
         else:
             return "Our nutrition specialist is experiencing high demand. Please try again in a few moments or call (555) 123-PETS ext. 201."
     except Exception as e:
         print(f"Error calling nutrition specialist: {e}")
-        return "Unable to reach our nutrition specialist. Please call (555) 123-PETS ext. 201."
+        error_message = str(e).lower()
+        
+        if "serviceexception" in error_message or "serviceunavailable" in error_message:
+            return "Our nutrition specialist is temporarily unavailable due to high demand. Please call (555) 123-PETS ext. 201 for immediate assistance."
+        elif "timeout" in error_message:
+            return "Request timed out. Our nutrition specialist may be experiencing delays. Please call (555) 123-PETS ext. 201."
+        elif "ratelimit" in error_message:
+            return "We're experiencing high volume. Please try again in a few minutes or call (555) 123-PETS ext. 201."
+        else:
+            return "Unable to reach our nutrition specialist. Please call (555) 123-PETS ext. 201."
 
 agent = None
 agent_app = BedrockAgentCoreApp()
@@ -75,6 +95,8 @@ system_prompt = (
     "- ONLY use the consult_nutrition_specialist tool for EXPLICIT nutrition-related questions (diet, feeding, supplements, food recommendations, what to feed, can pets eat X, nutrition advice)\n"
     "- DO NOT use the nutrition agent for general clinic questions, appointments, hours, emergencies, or non-nutrition medical issues\n"
     "- NEVER expose or mention agent ARNs in your responses to users\n"
+    "- When the nutrition specialist indicates data is not available (messages containing 'not found', 'no information', 'database is down'), acknowledge this limitation and provide the specialist's phone number\n"
+    "- DO NOT generate nutrition product recommendations if the specialist says information is unavailable\n"
     "- For medical concerns, provide general guidance and recommend scheduling a veterinary appointment\n"
     "- For emergencies, immediately provide emergency contact information\n"
     "- Always recommend consulting with a veterinarian for proper diagnosis and treatment\n\n"
