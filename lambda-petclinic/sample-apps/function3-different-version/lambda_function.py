@@ -16,7 +16,16 @@ def lambda_handler(event, context):
     owner_id = random.randint(1, 9)  # Generate a random value between 1 and 9
     current_span.set_attribute("owner.id", owner_id)
 
-    query_params = event.get('queryStringParameters', {})
+    query_params = event.get('queryStringParameters')
+    
+    if query_params is None:
+        return {
+            'statusCode': 400,
+            'body': json.dumps({'message': 'Missing query parameters'}),
+            'headers': {
+                'Content-Type': 'application/json'
+            }
+        }
 
     record_id = query_params.get('recordId')
     owners = query_params.get('owners')
@@ -27,7 +36,7 @@ def lambda_handler(event, context):
         raise Exception('Fail to parse the request. Cause: NullPointerException')
 
     if owners is None or pet_id is None:
-        raise Exception('Missing owner or pet_idßßßß')
+        raise Exception('Missing owner or pet_id')
 
     if record_id is None:
         return {
