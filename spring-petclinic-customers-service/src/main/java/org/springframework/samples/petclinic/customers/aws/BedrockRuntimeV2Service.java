@@ -17,9 +17,10 @@ import software.amazon.awssdk.services.bedrockruntime.model.*;
 @Slf4j
 public class BedrockRuntimeV2Service {
     final BedrockRuntimeClient bedrockRuntimeV2Client;
+    private static final int MAX_RETRIES = 3;
+    private static final long BASE_BACKOFF_MS = 1000;
 
     public BedrockRuntimeV2Service() {
-        // AWS web identity is set for EKS clusters, if these are not set then use default credentials
         if (System.getenv("AWS_WEB_IDENTITY_TOKEN_FILE") == null && System.getProperty("aws.webIdentityTokenFile") == null) {
             bedrockRuntimeV2Client = BedrockRuntimeClient.builder()
                     .region(Region.of(Util.REGION_FROM_EC2))
@@ -35,73 +36,95 @@ public class BedrockRuntimeV2Service {
     }
 
     public String invokeAnthropicClaude(String petType) {
-        try {
-            String claudeModelId = "anthropic.claude-v2:1";
-            String prompt = String.format("What are the best preventive measures for common %s diseases?", petType);
-            JSONObject userMessage = new JSONObject()
-                    .put("role", "user")
-                    .put("content", "Pet diagnose content");
-            JSONArray messages = new JSONArray()
-                    .put(userMessage);
+        int attempt = 0;
+        Exception lastException = null;
 
-            String payload = new JSONObject()
-                    .put("anthropic_version", "bedrock-2023-05-31")
-                    .put("messages", messages)
-                    .put("system", prompt)
-                    .put("max_tokens", 1000)
-                    .put("temperature", 0.5)
-                    .put("top_p", 0.9)
-                    .toString();
+        while (attempt < MAX_RETRIES) {
+            try {
+                String claudeModelId = "anthropic.claude-v2:1";
+                String prompt = String.format("What are the best preventive measures for common %s diseases?", petType);
+                JSONObject userMessage = new JSONObject()
+                        .put("role", "user")
+                        .put("content", "Pet diagnose content");
+                JSONArray messages = new JSONArray()
+                        .put(userMessage);
 
-            InvokeModelRequest request = InvokeModelRequest.builder()
-                    .body(SdkBytes.fromUtf8String(payload))
-                    .modelId(claudeModelId)
-                    .contentType("application/json")
-                    .accept("application/json")
-                    .build();
+                String payload = new JSONObject()
+                        .put("anthropic_version", "bedrock-2023-05-31")
+                        .put("messages", messages)
+                        .put("system", prompt)
+                        .put("max_tokens", 1000)
+                        .put("temperature", 0.5)
+                        .put("top_p", 0.9)
+                        .toString();
 
-            InvokeModelResponse response = bedrockRuntimeV2Client.invokeModel(request);
+                InvokeModelRequest request = InvokeModelRequest.builder()
+                        .body(SdkBytes.fromUtf8String(payload))
+                        .modelId(claudeModelId)
+                        .contentType("application/json")
+                        .accept("application/json")
+                        .build();
 
-            JSONObject responseBody = new JSONObject(response.body().asUtf8String());
+                InvokeModelResponse response = bedrockRuntimeV2Client.invokeModel(request);
 
-            int promptTokenCount = 0;
-            int generationTokenCount = 0;
-            if (responseBody.has("usage")) {
-                JSONObject usage = responseBody.getJSONObject("usage");
-                promptTokenCount = usage.getInt("input_tokens");
-                generationTokenCount = usage.getInt("output_tokens");
-            }
-            String generatedText = "";
-            if (responseBody.has("content")) {
-                JSONArray content = responseBody.getJSONArray("content");
-                if (content.length() > 0) {
-                    JSONObject firstContent = content.getJSONObject(0);
-                    if (firstContent.has("text")) {
-                        generatedText = firstContent.getString("text");
-                    }
+                JSONObject responseBody = new JSONObject(response.body().asUtf8String());
+
+                int promptTokenCount = 0;
+                int generationTokenCount = 0;
+                if (responseBody.has("usage")) {
+                    JSONObject usage = responseBody.getJSONObject("usage");
+                    promptTokenCount = usage.getInt("input_tokens");
+                    generationTokenCount = usage.getInt("output_tokens");
                 }
+                String generatedText = "";
+                if (responseBody.has("content")) {
+                    JSONArray content = responseBody.getJSONArray("content");
+                    if (content.length() > 0) {
+                        JSONObject firstContent = content.getJSONObject(0);
+                        if (firstContent.has("text")) {
+                            generatedText = firstContent.getString("text");
+                        }
+                    }
 
+                }
+                String stopReason = responseBody.getString("stop_reason");
+                log.info(
+                        "Invoke Claude Model response: " +
+                                "{ " +
+                                "\"modelId\": \"" + claudeModelId + "\", " +
+                                "\"prompt_token_count\": " + promptTokenCount + ", " +
+                                "\"generation_token_count\": " + generationTokenCount + ", " +
+                                "\"prompt\": \"" + prompt + "\", " +
+                                "\"generated_text\": \"" + generatedText.replace("\n", " ") + "\", " +
+                                "\"max_gen_len\": 1000, " +
+                                "\"temperature\": 0.5, " +
+                                "\"top_p\": 0.9, " +
+                                "\"stop_reason\": \"" + stopReason + "\" " +
+                                " }");
+
+                return generatedText;
+            } catch (ThrottlingException e) {
+                lastException = e;
+                attempt++;
+                if (attempt < MAX_RETRIES) {
+                    long backoffTime = BASE_BACKOFF_MS * (long) Math.pow(2, attempt - 1);
+                    log.warn("Bedrock throttling detected, retrying in {}ms (attempt {}/{})", backoffTime, attempt, MAX_RETRIES);
+                    try {
+                        Thread.sleep(backoffTime);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        throw new RuntimeException("Retry interrupted", ie);
+                    }
+                } else {
+                    log.error("Max retries exceeded for Bedrock InvokeModel after throttling");
+                    throw e;
+                }
+            } catch (Exception e) {
+                log.error("Failed to invoke Anthropic claude: Error: {}", e.getMessage());
+                throw e;
             }
-            String stopReason = responseBody.getString("stop_reason");
-            log.info(
-                    "Invoke Claude Model response: " +
-                            "{ " +
-                            "\"modelId\": \"" + claudeModelId + "\", " +
-                            "\"prompt_token_count\": " + promptTokenCount + ", " +
-                            "\"generation_token_count\": " + generationTokenCount + ", " +
-                            "\"prompt\": \"" + prompt + "\", " +
-                            "\"generated_text\": \"" + generatedText.replace("\n", " ") + "\", " +
-                            "\"max_gen_len\": 1000, " +
-                            "\"temperature\": 0.5, " +
-                            "\"top_p\": 0.9, " +
-                            "\"stop_reason\": \"" + stopReason + "\" " +
-                            " }");
-
-            return generatedText;
-        } catch (Exception e) {
-            log.error("Failed to invoke Anthropic claude: Error: %s%n ",e.getMessage());
-            throw e;
         }
+        throw new RuntimeException("Failed to invoke Claude model after " + MAX_RETRIES + " attempts", lastException);
     }
 
 }
