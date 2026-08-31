@@ -24,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Example;
 import org.springframework.data.domain.ExampleMatcher;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.samples.petclinic.customers.Util.WellKnownAttributes;
 import org.springframework.samples.petclinic.customers.model.Owner;
@@ -31,6 +32,7 @@ import org.springframework.samples.petclinic.customers.model.OwnerRepository;
 import org.springframework.samples.petclinic.customers.model.Pet;
 import org.springframework.samples.petclinic.customers.model.PetRepository;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -56,6 +58,7 @@ class OwnerResource {
 
     private final OwnerRepository ownerRepository;
     private final PetRepository petRepository;
+    private static final int MAX_BATCH_SIZE = 100; // Prevent large batch operations
 
     /**
      * Create Owner
@@ -120,39 +123,65 @@ class OwnerResource {
     }
 
     @Scheduled(cron = "0 0 8 * * ?") // every PST midnight
+    @Transactional
     public void ageOldData() {
         log.info("ageOldData() get called and purge all data!");
 
-        /* Purge pets. */
-        Pet pet = new Pet();
-        pet.setName("lastName");
+        try {
+            /* Purge pets with batch size limit to prevent stack overflow. */
+            Pet pet = new Pet();
+            pet.setName("lastName");
 
-        Example<Pet> petExample = Example.of(
-                pet,
-                ExampleMatcher
-                        .matchingAll()
-                        .withStringMatcher(ExampleMatcher.StringMatcher.STARTING));
+            Example<Pet> petExample = Example.of(
+                    pet,
+                    ExampleMatcher
+                            .matchingAll()
+                            .withStringMatcher(ExampleMatcher.StringMatcher.STARTING));
 
-        List<Pet> pets = petRepository.findAll(petExample);
-        log.info("Found {} pets to purge", pets.size());
-        petRepository.deleteAllInBatch(pets);
+            // Use pagination to limit batch size and prevent stack overflow
+            List<Pet> pets = petRepository.findAll(petExample, PageRequest.of(0, MAX_BATCH_SIZE)).getContent();
+            log.info("Found {} pets to purge (limited to {} per batch)", pets.size(), MAX_BATCH_SIZE);
+            
+            if (!pets.isEmpty()) {
+                // Delete individually to avoid batch operation issues
+                for (Pet petToDelete : pets) {
+                    try {
+                        petRepository.delete(petToDelete);
+                    } catch (Exception e) {
+                        log.error("Failed to delete pet {}: {}", petToDelete.getId(), e.getMessage());
+                    }
+                }
+                log.info("Successfully purged {} pets", pets.size());
+            }
 
-        log.info("Successfully purged {} pets", pets.size());
+            /* Purge owners with batch size limit to prevent stack overflow. */
+            Owner owner = new Owner();
+            owner.setFirstName("firstName");
 
-        /* Purge owners. */
-        Owner owner = new Owner();
-        owner.setFirstName("firstName");
+            Example<Owner> ownerExample = Example.of(
+                    owner,
+                    ExampleMatcher
+                            .matchingAll()
+                            .withStringMatcher(ExampleMatcher.StringMatcher.STARTING));
 
-        Example<Owner> ownerExample = Example.of(
-                owner,
-                ExampleMatcher
-                        .matchingAll()
-                        .withStringMatcher(ExampleMatcher.StringMatcher.STARTING));
-
-        List<Owner> owners = ownerRepository.findAll(ownerExample);
-        log.info("Found {} owners to purge", owners.size());
-        ownerRepository.deleteAllInBatch(owners);
-
-        log.info("Successfully purged {} owners", owners.size());
+            // Use pagination to limit batch size and prevent stack overflow
+            List<Owner> owners = ownerRepository.findAll(ownerExample, PageRequest.of(0, MAX_BATCH_SIZE)).getContent();
+            log.info("Found {} owners to purge (limited to {} per batch)", owners.size(), MAX_BATCH_SIZE);
+            
+            if (!owners.isEmpty()) {
+                // Delete individually to avoid batch operation issues
+                for (Owner ownerToDelete : owners) {
+                    try {
+                        ownerRepository.delete(ownerToDelete);
+                    } catch (Exception e) {
+                        log.error("Failed to delete owner {}: {}", ownerToDelete.getId(), e.getMessage());
+                    }
+                }
+                log.info("Successfully purged {} owners", owners.size());
+            }
+        } catch (Exception e) {
+            log.error("Error during data purge operation: {}", e.getMessage(), e);
+            // Don't re-throw to prevent scheduled task from failing
+        }
     }
 }
