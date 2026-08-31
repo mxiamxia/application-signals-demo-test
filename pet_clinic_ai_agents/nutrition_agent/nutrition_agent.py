@@ -46,11 +46,11 @@ agent_app = BedrockAgentCoreApp()
 def get_feeding_guidelines(pet_type, age, weight):
     """Get feeding guidelines based on pet type, age, and weight"""    
     if ANIMAL_DATA is None:
-        return "Animal database is down, please consult your veterinarian for feeding guidelines."
+        return "I don't have that information available right now. Please consult your veterinarian for feeding guidelines."
     
     animal = ANIMAL_DATA.get(pet_type.lower() + 's')
     if not animal:
-        return f"{pet_type.title()} not found in animal database. Consult veterinarian for specific feeding guidelines"
+        return f"I don't have specific feeding information for {pet_type}. Please consult your veterinarian for proper feeding guidelines."
     
     calories_per_lb = animal.get('calories_per_pound', '15-20')
     schedule = animal.get('feeding_schedule', {}).get(age.lower(), '2 times daily')
@@ -62,7 +62,7 @@ def get_feeding_guidelines(pet_type, age, weight):
         else:
             calories = weight * float(calories_per_lb)
     except (ValueError, TypeError):
-        return f"Feed based on veterinary recommendations for {pet_type}, {schedule}"
+        return f"I don't have complete feeding information for {pet_type}. Please consult your veterinarian for specific feeding recommendations."
     
     return f"Feed approximately {calories:.0f} calories daily, {schedule}"
 
@@ -70,27 +70,35 @@ def get_feeding_guidelines(pet_type, age, weight):
 def get_dietary_restrictions(pet_type, condition):
     """Get dietary recommendations for specific health conditions by animal type"""    
     if ANIMAL_DATA is None:
-        return "Animal database is down, please consult your veterinarian for dietary advice."
+        return "I don't have that information available right now. Please consult your veterinarian for dietary advice."
     
     animal = ANIMAL_DATA.get(pet_type.lower() + 's')
     if not animal:
-        return f"{pet_type.title()} not found in animal database. Consult veterinarian for condition-specific dietary advice"
+        return f"I don't have specific dietary information for {pet_type}. Please consult your veterinarian for condition-specific dietary advice."
     
     restrictions = animal.get('dietary_restrictions', {})
-    return restrictions.get(condition.lower(), f"No dietary restrictions for {condition} found in animal database. Consult veterinarian for condition-specific dietary advice")
+    restriction_info = restrictions.get(condition.lower())
+    if not restriction_info:
+        return f"I don't have specific dietary information for {condition} in {pet_type}. Please consult your veterinarian for condition-specific dietary advice."
+    
+    return restriction_info
 
 @tool
 def get_nutritional_supplements(pet_type, supplement):
     """Get supplement recommendations by animal type"""    
     if ANIMAL_DATA is None:
-        return "Animal database is down, please consult your veterinarian before adding supplements."
+        return "I don't have that information available right now. Please consult your veterinarian before adding supplements."
     
     animal = ANIMAL_DATA.get(pet_type.lower() + 's')
     if not animal:
-        return f"{pet_type.title()} not found in animal database. Consult veterinarian before adding supplements"
+        return f"I don't have specific supplement information for {pet_type}. Please consult your veterinarian before adding supplements."
     
     supplements = animal.get('supplements', {})
-    return supplements.get(supplement.lower(), f"No information for {supplement} supplement found in animal database. Consult veterinarian before adding supplements")
+    supplement_info = supplements.get(supplement.lower())
+    if not supplement_info:
+        return f"I don't have specific information about {supplement} supplements for {pet_type}. Please consult your veterinarian before adding supplements."
+    
+    return supplement_info
 
 def create_nutrition_agent():
     model = BedrockModel(
@@ -111,8 +119,11 @@ def create_nutrition_agent():
         "- Cats are obligate carnivores requiring animal-based nutrients\n"
         "- Dogs are omnivores needing balanced animal and plant sources\n"
         "- Always recommend veterinary consultation for significant dietary changes\n"
-        "- Provide specific, actionable advice when possible\n\n"
-        "Toxic foods to avoid: garlic, onions, chocolate, grapes, xylitol, alcohol, macadamia nuts"
+        "- Provide specific, actionable advice when possible\n"
+        "- If you don't have specific information, clearly state 'I don't have that information' and recommend consulting a veterinarian\n"
+        "- Never make up or hallucinate nutrition facts or product recommendations\n\n"
+        "Toxic foods to avoid: garlic, onions, chocolate, grapes, xylitol, alcohol, macadamia nuts\n\n"
+        "When information is not available in your database, always respond with 'I don't have that information' and direct users to consult their veterinarian."
     )
 
     return Agent(model=model, tools=tools, system_prompt=system_prompt)
@@ -136,17 +147,28 @@ async def invoke(payload, context):
     """
     Invoke the nutrition agent with a payload
     """
-    maybe_throw_error(threshold=0.35)
-    
-    agent = create_nutrition_agent()
-    msg = payload.get('prompt', '')
+    try:
+        maybe_throw_error(threshold=0.35)
+        
+        agent = create_nutrition_agent()
+        msg = payload.get('prompt', '')
 
-    response_data = []
-    async for event in agent.stream_async(msg):
-        if 'data' in event:
-            response_data.append(event['data'])
-    
-    return ''.join(response_data)
+        response_data = []
+        async for event in agent.stream_async(msg):
+            if 'data' in event:
+                response_data.append(event['data'])
+        
+        response = ''.join(response_data)
+        
+        # Validate response is not empty and contains meaningful content
+        if not response or response.strip() == '':
+            return "I don't have that information available right now. Please consult your veterinarian for specific advice."
+        
+        return response
+        
+    except Exception as e:
+        # Graceful error handling - return helpful message instead of crashing
+        return "I don't have that information available right now. Please consult your veterinarian for specific advice."
 
 if __name__ == "__main__":    
     uvicorn.run(agent_app, host='0.0.0.0', port=8080)

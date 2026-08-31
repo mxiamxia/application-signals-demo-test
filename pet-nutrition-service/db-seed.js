@@ -17,7 +17,12 @@ module.exports = function(){
     { pet_type: 'lizard', facts: 'Insects, leafy greens, and calcium supplements' },
     { pet_type: 'snake', facts: 'Whole prey (mice/rats) based on size' },
     { pet_type: 'bird', facts: 'High-quality seeds, pellets, and fresh fruits/veggies' },
-    { pet_type: 'hamster', facts: 'Pellets, grains, fresh vegetables, and occasional fruits' }
+    { pet_type: 'hamster', facts: 'Pellets, grains, fresh vegetables, and occasional fruits' },
+    { pet_type: 'rabbit', facts: 'Timothy hay, high-fiber pellets, leafy greens, and limited fruits' },
+    { pet_type: 'fish', facts: 'Species-specific flakes or pellets, frozen/live foods, and proper feeding schedule' },
+    { pet_type: 'turtle', facts: 'Commercial turtle pellets, leafy greens, and calcium supplements' },
+    { pet_type: 'guinea pig', facts: 'Timothy hay, vitamin C-rich pellets, fresh vegetables, and limited fruits' },
+    { pet_type: 'ferret', facts: 'High-protein, low-carb ferret food with frequent small meals' }
   ])
     .then(() => logger.info('collection populated'))
     .catch(err => logger.error('error populating collection:', err));
