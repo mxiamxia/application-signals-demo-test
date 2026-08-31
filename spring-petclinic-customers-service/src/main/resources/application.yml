@@ -3,6 +3,37 @@ spring:
     name: customers-service
   config:
     import: optional:configserver:${CONFIG_SERVER_URL:http://localhost:8888/}
+  # Database performance optimizations
+  datasource:
+    hikari:
+      # Connection pool optimizations for better performance
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      leak-detection-threshold: 60000
+      # HSQLDB specific optimizations
+      connection-init-sql: "SET DATABASE DEFAULT TABLE TYPE CACHED; SET DATABASE SQL SYNTAX MYS TRUE; SET DATABASE TRANSACTION CONTROL MVCC;"
+  jpa:
+    hibernate:
+      # Use update instead of create-drop for better performance
+      ddl-auto: update
+    properties:
+      hibernate:
+        # Performance optimizations
+        jdbc.batch_size: 25
+        order_inserts: true
+        order_updates: true
+        jdbc.batch_versioned_data: true
+        # Connection provider optimizations
+        connection.provider_disables_autocommit: true
+        # Query optimizations
+        default_batch_fetch_size: 16
+        # Cache optimizations
+        cache.use_second_level_cache: true
+        cache.use_query_cache: true
+        cache.region.factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
 
 eureka:
   instance:
@@ -16,6 +47,9 @@ logging:
     root: OFF
     org.springframework.samples.petclinic.customers.web.PetResource: INFO
     org.springframework.samples.petclinic.customers.aws.SqsService: FATAL
+    # Add database logging for monitoring
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
   pattern:
     level: trace_id=%mdc{trace_id} span_id=%mdc{span_id} trace_flags=%mdc{trace_flags} %5p
 
