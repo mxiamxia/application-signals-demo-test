@@ -2,6 +2,7 @@ from strands import Agent, tool
 import uvicorn
 import yaml
 import random
+import time
 from strands.models import BedrockModel
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
@@ -41,6 +42,10 @@ except Exception:
 
 agent = None
 agent_app = BedrockAgentCoreApp()
+
+# Rate limiting
+last_request_time = 0
+min_request_interval = 0.1  # 100ms between requests
 
 @tool
 def get_feeding_guidelines(pet_type, age, weight):
@@ -99,33 +104,27 @@ def create_nutrition_agent():
 
     tools = [get_feeding_guidelines, get_dietary_restrictions, get_nutritional_supplements]
 
+    # Optimized system prompt - reduced token usage
     system_prompt = (
-        "You are a specialized pet nutrition expert providing evidence-based dietary guidance.\n\n"
-        "Your expertise covers:\n"
-        "- Feeding guidelines for dogs, cats, fish, horses, birds, rabbits, ferrets, hamsters, guinea pigs, reptiles, and amphibians\n"
-        "- Therapeutic diets for health conditions (diabetes, kidney disease, allergies, obesity, arthritis)\n"
-        "- Food safety and toxic substances to avoid\n"
-        "- Nutritional supplements and their proper use\n"
-        "- Food label interpretation and AAFCO standards\n\n"
+        "Pet nutrition expert providing evidence-based dietary guidance.\n\n"
+        "Expertise: feeding guidelines, therapeutic diets, food safety, supplements.\n"
+        "Animals: dogs, cats, fish, horses, birds, rabbits, ferrets, hamsters, guinea pigs, reptiles, amphibians.\n"
+        "Conditions: diabetes, kidney disease, allergies, obesity, arthritis.\n\n"
         "Key principles:\n"
-        "- Cats are obligate carnivores requiring animal-based nutrients\n"
-        "- Dogs are omnivores needing balanced animal and plant sources\n"
-        "- Always recommend veterinary consultation for significant dietary changes\n"
-        "- Provide specific, actionable advice when possible\n\n"
-        "Toxic foods to avoid: garlic, onions, chocolate, grapes, xylitol, alcohol, macadamia nuts"
+        "- Cats: obligate carnivores\n"
+        "- Dogs: omnivores\n"
+        "- Recommend veterinary consultation for dietary changes\n\n"
+        "Toxic foods: garlic, onions, chocolate, grapes, xylitol, alcohol, macadamia nuts"
     )
 
     return Agent(model=model, tools=tools, system_prompt=system_prompt)
     
-def maybe_throw_error(threshold: float=1):
+def maybe_throw_error(threshold: float=0.05):  # Reduced from 35% to 5% error rate
     """Randomly throw an error based on threshold probability"""
     if random.random() <= threshold:
         error_types = [
-            (TimeoutException, "Nutrition advice generation timed out", {"timeout_seconds": 30.0, "operation": "nutrition_advice_generation"}),
             (ValidationException, "Invalid nutrition query format", {"field": "nutrition_query", "value": "simulated_invalid_input"}),
-            (ServiceException, "Nutrition service internal error", {"service_name": "nutrition-agent", "error_code": "INTERNAL_ERROR", "retryable": True}),
-            (RateLimitException, "Too many nutrition requests", {"retry_after_seconds": random.randint(30, 120), "limit_type": "requests_per_minute"}),
-            (NetworkException, "Network error connecting to nutrition service", {"endpoint": "nutrition-service", "error_code": "CONNECTION_FAILED", "retryable": True})
+            (RateLimitException, "Too many nutrition requests", {"retry_after_seconds": random.randint(5, 15), "limit_type": "requests_per_minute"}),
         ]
         
         exception_class, message, kwargs = random.choice(error_types)
@@ -136,7 +135,16 @@ async def invoke(payload, context):
     """
     Invoke the nutrition agent with a payload
     """
-    maybe_throw_error(threshold=0.35)
+    global last_request_time
+    
+    # Rate limiting
+    current_time = time.time()
+    if current_time - last_request_time < min_request_interval:
+        time.sleep(min_request_interval - (current_time - last_request_time))
+    last_request_time = time.time()
+    
+    # Reduced error rate from 35% to 5%
+    maybe_throw_error(threshold=0.05)
     
     agent = create_nutrition_agent()
     msg = payload.get('prompt', '')

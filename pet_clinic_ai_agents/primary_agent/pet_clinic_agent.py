@@ -3,11 +3,18 @@ import boto3
 import json
 import uuid
 import uvicorn
+import time
 from strands import Agent, tool
 from strands.models import BedrockModel
 from bedrock_agentcore.runtime import BedrockAgentCoreApp
 
 BEDROCK_MODEL_ID = "us.anthropic.claude-3-5-haiku-20241022-v1:0"
+
+# Rate limiting and caching
+last_request_time = 0
+min_request_interval = 0.1  # 100ms between requests
+response_cache = {}
+cache_ttl = 300  # 5 minutes
 
 @tool
 def get_clinic_hours():
@@ -42,20 +49,51 @@ def consult_nutrition_specialist(query, agent_arn, session_id=None):
     if not agent_arn:
         return "Nutrition specialist configuration error. Please call (555) 123-PETS ext. 201."
     
+    # Check cache first
+    cache_key = f"nutrition_{hash(query)}"
+    current_time = time.time()
+    if cache_key in response_cache:
+        cached_response, timestamp = response_cache[cache_key]
+        if current_time - timestamp < cache_ttl:
+            return cached_response
+    
     try:
         client = boto3.client('bedrock-agentcore')
-        response = client.invoke_agent_runtime(
-            agentRuntimeArn=agent_arn,
-            runtimeSessionId=session_id,
-            qualifier='DEFAULT',
-            payload=json.dumps({'prompt': query})
-        )
-        # Read the streaming response
-        if 'response' in response:
-            body = response['response'].read().decode('utf-8')
-            return body
-        else:
-            return "Our nutrition specialist is experiencing high demand. Please try again in a few moments or call (555) 123-PETS ext. 201."
+        
+        # Add retry logic with exponential backoff
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = client.invoke_agent_runtime(
+                    agentRuntimeArn=agent_arn,
+                    runtimeSessionId=session_id,
+                    qualifier='DEFAULT',
+                    payload=json.dumps({'prompt': query})
+                )
+                
+                if 'response' in response:
+                    body = response['response'].read().decode('utf-8')
+                    # Cache successful response
+                    response_cache[cache_key] = (body, current_time)
+                    return body
+                else:
+                    return "Our nutrition specialist is experiencing high demand. Please try again in a few moments or call (555) 123-PETS ext. 201."
+                    
+            except client.exceptions.ThrottlingException:
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt) + (0.1 * attempt)  # Exponential backoff
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    return "Nutrition specialist is busy. Please try again later or call (555) 123-PETS ext. 201."
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    time.sleep(1)
+                    continue
+                else:
+                    print(f"Error calling nutrition specialist: {e}")
+                    return "Unable to reach our nutrition specialist. Please call (555) 123-PETS ext. 201."
+                    
     except Exception as e:
         print(f"Error calling nutrition specialist: {e}")
         return "Unable to reach our nutrition specialist. Please call (555) 123-PETS ext. 201."
@@ -64,21 +102,20 @@ agent = None
 agent_app = BedrockAgentCoreApp()
 session_id = f"clinic-session-{str(uuid.uuid4())}"
 
+# Optimized system prompt - reduced token usage
 system_prompt = (
-    "You are a helpful pet clinic assistant. You can help with:\n"
-    "- General clinic information (hours, contact info)\n"
-    "- Emergency situations and contacts\n"
-    "- Directing clients to appropriate specialists\n"
-    "- Scheduling guidance\n"
-    "- Basic medical guidance and when to seek veterinary care\n\n"
-    "IMPORTANT GUIDELINES:\n"
-    "- ONLY use the consult_nutrition_specialist tool for EXPLICIT nutrition-related questions (diet, feeding, supplements, food recommendations, what to feed, can pets eat X, nutrition advice)\n"
-    "- DO NOT use the nutrition agent for general clinic questions, appointments, hours, emergencies, or non-nutrition medical issues\n"
-    "- NEVER expose or mention agent ARNs in your responses to users\n"
-    "- For medical concerns, provide general guidance and recommend scheduling a veterinary appointment\n"
-    "- For emergencies, immediately provide emergency contact information\n"
-    "- Always recommend consulting with a veterinarian for proper diagnosis and treatment\n\n"
-    f"Your session ID is: {session_id}. When calling consult_nutrition_specialist, use this session_id parameter."
+    "Pet clinic assistant helping with:\n"
+    "- Clinic info (hours, contact)\n"
+    "- Emergency contacts\n"
+    "- Specialist referrals\n"
+    "- Scheduling\n"
+    "- Basic medical guidance\n\n"
+    "RULES:\n"
+    "- Use consult_nutrition_specialist ONLY for nutrition questions (diet, feeding, supplements, food)\n"
+    "- Never mention agent ARNs to users\n"
+    "- For medical concerns, recommend veterinary appointment\n"
+    "- For emergencies, provide emergency contact immediately\n\n"
+    f"Session ID: {session_id}"
 )
 
 def create_clinic_agent():
@@ -95,6 +132,14 @@ async def invoke(payload, context):
     """
     Invoke the clinic agent with a payload
     """ 
+    global last_request_time
+    
+    # Rate limiting
+    current_time = time.time()
+    if current_time - last_request_time < min_request_interval:
+        time.sleep(min_request_interval - (current_time - last_request_time))
+    last_request_time = time.time()
+    
     agent = create_clinic_agent()
     msg = payload.get('prompt', '')
     response_data = []
